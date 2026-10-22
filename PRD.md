@@ -431,16 +431,16 @@ Ikuti pola Livewire dari starter kit; jangan mencampur dua gaya (mis. single-fil
 
 ## 10. Deployment dan Penyimpanan Foto
 
-### 10.1 Target deploy: Render + Supabase (diputuskan 23 Okt)
+### 10.1 Target deploy: Azure App Service + Supabase (diputuskan 23 Okt)
 Langkah lengkap: [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
-- **Aplikasi:** Render Free Web Service (Docker, region Singapore) memakai `Dockerfile` dan `docker/start.sh` di repo, dibuat manual sebagai Web Service (Blueprint meminta kartu kredit; `render.yaml` hanya referensi variabel). Auto-deploy setiap push ke `main`.
-- **Database:** Supabase PostgreSQL (free, tidak kedaluwarsa) lewat koneksi *Session pooler* (IPv4, `sslmode=require`). Database gratis Render tidak dipakai karena kedaluwarsa 30 hari.
+- **Aplikasi:** Azure App Service (Linux container, plan Free F1; B1 dari kredit Azure for Students bila perlu). Image dibuat dari `Dockerfile` + `docker/start.sh` oleh workflow `.github/workflows/deploy.yml` setelah `tests` hijau di `main`, disimpan di GitHub Container Registry (`ghcr.io/hilmyfausta/harvesta`), lalu di-deploy ke Azure (publish profile di GitHub Secrets).
+- **Database:** Supabase PostgreSQL (free, tidak kedaluwarsa) lewat koneksi *Session pooler* (IPv4, `sslmode=require`).
 - **Foto:** Supabase Storage, bucket publik `harvesta-photos`, diakses lewat protokol S3 (`PHOTO_DISK=s3`).
 - **Data demo:** `start.sh` menjalankan `migrate --force` lalu `db:seed --force` setiap boot. Aman diulang: akun dan master data di-*upsert*, data demo (40 pohon + 32 foto) hanya dibuat jika tabel `trees` masih kosong.
-- **Rahasia** (`DB_PASSWORD`, kunci S3, `SEED_*_PASSWORD`) hanya diisi di dashboard Render (`sync: false`), tidak pernah di repo.
-- Wasmer Edge tidak dipakai: dukungan ekstensi PHP (`pdo_pgsql`, `gd`, `intl`) tidak terdokumentasi dan PostgreSQL-nya hanya di region Eropa/Kanada.
-- Batasan free tier: Render tidur setelah 15 menit idle (buka ±1 menit sebelum demo); project Supabase di-*pause* setelah ±1 minggu tidak aktif (aktifkan lagi dari dashboard).
+- **Rahasia** (`APP_KEY`, `DB_PASSWORD`, kunci S3, `SEED_*_PASSWORD`) hanya diisi di Azure App settings / GitHub Secrets, tidak pernah di repo.
+- Ditolak: Wasmer Edge (dukungan ekstensi PHP tidak terdokumentasi, PostgreSQL hanya region Eropa/Kanada) dan Render (Blueprint maupun Web Service meminta kartu kredit).
+- Batasan: F1 dibatasi 60 menit CPU/hari dan tidur saat idle (buka ±2 menit sebelum demo); project Supabase di-*pause* setelah ±1 minggu tidak aktif (aktifkan lagi dari dashboard).
 
 ### 10.2 Batasan runtime yang harus dipatuhi sejak sekarang
 Anggap disk lokal server bersifat **sementara / tidak persisten**. Maka:
@@ -448,7 +448,7 @@ Anggap disk lokal server bersifat **sementara / tidak persisten**. Maka:
 - Log ke `stderr` di produksi (`LOG_CHANNEL=stderr`).
 - Ekspor/Laporan dihasilkan streaming, bukan disimpan ke disk.
 - Hindari ekstensi PHP yang tidak umum; periksa kompatibilitas saat uji deploy.
-- Jika uji deploy gagal pada hal tertentu, catat di bagian 14 dan cari alternatif (cadangan: Render + Docker dengan database eksternal).
+- Jika uji deploy gagal pada hal tertentu, catat di bagian 14 dan cari alternatif (cadangan: plan B1 Azure dari kredit student).
 
 ### 10.3 Abstraksi penyimpanan foto (akan "diakali" belakangan)
 - Semua kode foto hanya boleh memakai disk Laravel bernama **`photos`**: `Storage::disk('photos')`. **Dilarang** memakai `public_path()`, `storage_path()`, atau path file langsung.
@@ -525,7 +525,7 @@ Jika jadwal meleset, potong dulu: PDF export, grafik tambahan, dan fitur foto di
 
 **Catatan uji deploy (isi saat Tahap 1)**
 - Hasil uji Wasmer (ekstensi PHP, koneksi PostgreSQL, session/cache, log): **tidak dapat dilanjutkan** — registry Wasmer hanya menyediakan `php/php` sampai 8.3.4, sedangkan `composer.lock` mensyaratkan PHP >= 8.4.1 (Symfony 8).
-- Alternatif: scaffold **Docker + Render** (`Dockerfile`, `docker/start.sh`, `render.yaml`) sudah dibuat; image berhasil di-build dan container berhasil menjalankan migrasi, cache, route/view cache, `storage:link`, serta server di `/login`.
+- Docker scaffold (`Dockerfile`, `docker/start.sh`) sudah dibuat dan teruji: image berhasil di-build dan container menjalankan migrasi, cache, `storage:link`, serta server di `/login`. Target deploy kini Azure App Service (10.1); `render.yaml` dihapus.
 - Keputusan penyimpanan foto produksi: Supabase Storage (lihat 10.1) (sementara `PHOTO_DISK=local`).
 
 ---
