@@ -47,6 +47,24 @@ return [
             'report' => false,
         ],
 
+        // Tree photos. Feature code must only use Storage::disk('photos').
+        // Set PHOTO_DISK=s3 (plus the PHOTO_S3_* variables) to move photos to
+        // S3-compatible storage such as Supabase Storage or Cloudflare R2.
+        'photos' => [
+            'driver' => env('PHOTO_DISK', 'local'),
+            'root' => env('PHOTO_DISK_ROOT', storage_path('app/public/photos')),
+            'url' => env('PHOTO_DISK_URL', rtrim((string) env('APP_URL', 'http://localhost'), '/').'/storage/photos'),
+            'visibility' => 'public',
+            'key' => env('PHOTO_S3_ACCESS_KEY_ID'),
+            'secret' => env('PHOTO_S3_SECRET_ACCESS_KEY'),
+            'region' => env('PHOTO_S3_REGION', 'auto'),
+            'bucket' => env('PHOTO_S3_BUCKET'),
+            'endpoint' => env('PHOTO_S3_ENDPOINT'),
+            'use_path_style_endpoint' => (bool) env('PHOTO_S3_USE_PATH_STYLE_ENDPOINT', true),
+            'throw' => false,
+            'report' => false,
+        ],
+
         's3' => [
             'driver' => 's3',
             'key' => env('AWS_ACCESS_KEY_ID'),

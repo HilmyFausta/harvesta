@@ -32,7 +32,7 @@
 
 | # | Syarat | Cara pemenuhan |
 |---|--------|----------------|
-| R1 | Website CRUD memakai Laravel (MVC) | Laravel 12 + Livewire starter kit |
+| R1 | Website CRUD memakai Laravel (MVC) | Laravel 13 + Livewire 4 starter kit |
 | R2 | Minimal 8 fitur, tidak termasuk autentikasi | 11 fitur (F-01 s.d. F-11), bagian 5 |
 | R3 | Login, registrasi, dan logout | Bawaan starter kit, disesuaikan (bagian 5.0) |
 | R4 | Skema database punya minimal 1 foreign key | Banyak FK (bagian 6) |
@@ -108,6 +108,7 @@ Semua fitur: tabel dengan pencarian, filter, sortir, pagination (15/halaman), ko
 - Register (name, email, password + confirmation), Login (email + password, remember me), Logout, dan Forgot password bawaan starter kit.
 - Gunakan hasil starter kit apa adanya sebagai dasar; hanya sesuaikan teks (Inggris), tampilan (bagian 8), dan penetapan peran default `staff`.
 - Halaman selain auth wajib diproteksi middleware `auth` (dan `verified` hanya jika email verification diaktifkan; **default: tidak diaktifkan** agar demo mudah).
+- Fitur starter kit yang dipakai (sudah diterapkan lewat `install:features`): registration, password confirmation, two-factor authentication. **Dibuang:** email verification dan passkeys (passkeys butuh WebAuthn/HTTPS dengan domain tetap sehingga berisiko saat deploy).
 
 ### F-01 Dashboard
 - **Akses:** Admin, Staff (konten finansial hanya untuk Admin).
@@ -300,7 +301,8 @@ Konvensi: nama tabel jamak snake_case; PK `id` (bigint, auto-increment); semua t
 `trees(block_id)`, `trees(tree_type_id)`, `trees(status)`, `care_logs(tree_id, performed_on)`, `care_logs(next_due_on)`, `harvests(tree_id, harvested_on)`, `expenses(spent_on)`, `sales(sold_on)`.
 
 ### 6.4 Seeder (wajib, bahasa Inggris)
-- 1 Admin (`admin@example.com`) dan 1 Staff (`staff@example.com`), password dev: `password` (**wajib diganti di produksi**; email dan password produksi dibaca dari env, bukan hardcode).
+- 1 Admin (`admin@example.com`) dan 1 Staff (`staff@example.com`), password dev: `password` (**wajib diganti di produksi**; email dan password produksi dibaca dari env, bukan hardcode). Variabel: `SEED_ADMIN_*`, `SEED_STAFF_*`, `SEED_DEMO_DATA` (lihat `config/seeding.php`). Seeder menolak berjalan di produksi bila password kosong.
+- Data demo dibuat deterministik (Faker di-seed), jadi angka di semua laptop sama. `fakerphp/faker` dipindah ke `require` agar seeder demo tetap jalan di server produksi (`composer install --no-dev`).
 - 4 categories (Fruit, Timber, Ornamental, Spice), ±10 tree types (contoh: Durian, Mango, Rambutan, Teak, Mahogany, Clove, dll.), 3 blocks, ±40 trees, ±100 care logs, ±40 harvests, ±30 expenses, ±20 sales dengan tanggal tersebar 12 bulan terakhir (agar grafik tampak hidup).
 - Seeder harus idempotent-friendly (`php artisan migrate:fresh --seed` aman dijalankan berulang).
 - Buat Model Factory untuk semua model.
@@ -367,12 +369,12 @@ Item yang tidak boleh diakses peran tertentu **tidak ditampilkan** dan route-nya
 ### 9.1 Stack (dikunci — jangan ganti tanpa kesepakatan tim)
 | Lapisan | Pilihan |
 |---------|---------|
-| Bahasa/framework | PHP ≥ 8.3, Laravel 12 |
-| Starter kit | **Livewire** (dibuat via `laravel new ... --livewire --pnpm --boost`) |
-| Database | PostgreSQL 16 (lokal dan produksi); tidak memakai SQLite/MySQL |
-| Frontend | Livewire + Blade + Tailwind CSS (bawaan starter kit), Chart.js untuk grafik |
+| Bahasa/framework | PHP 8.4 (minimal 8.3), Laravel 13 |
+| Starter kit | **Livewire 4** + Flux UI (free), single-file components (`⚡name.blade.php`) |
+| Database | PostgreSQL 16+ (lokal dan produksi, termasuk tes); tidak memakai SQLite/MySQL |
+| Frontend | Livewire + Blade + Tailwind CSS 4 (bawaan starter kit), Chart.js untuk grafik |
 | Package manager JS | **pnpm** (bukan npm); commit `pnpm-lock.yaml`, jangan commit `package-lock.json` |
-| Tes | Pest atau PHPUnit (sesuai bawaan starter kit) |
+| Tes | PHPUnit (bawaan starter kit) di database PostgreSQL `harvesta_testing`; PHPStan level 7 (Larastan) |
 | Deploy | Wasmer Edge (bagian 10) |
 | Format kode | Laravel Pint |
 
@@ -381,27 +383,36 @@ Setup lokal tiap anggota:
 git clone <repo-url> && cd <repo>
 composer install && pnpm install
 cp .env.example .env && php artisan key:generate
-# buat database PostgreSQL lokal, isi DB_* di .env
+# buat DUA database PostgreSQL: harvesta (aplikasi) dan harvesta_testing (tes), isi DB_* di .env
+createdb harvesta && createdb harvesta_testing
+php artisan storage:link
 php artisan migrate:fresh --seed
-composer run dev
+composer run dev      # otomatis memakai pnpm (dideteksi dari pnpm-lock.yaml)
+composer test         # Pint + PHPStan + PHPUnit, sama persis dengan CI
 ```
-`.env.example` harus berisi `DB_CONNECTION=pgsql`, `APP_LOCALE=en`, `APP_TIMEZONE=Asia/Jakarta`, dan placeholder variabel foto/disk. `composer run dev` harus memakai `pnpm` (ubah script `dev` di `composer.json` jika masih `npm`).
+`.env.example` sudah berisi `DB_CONNECTION=pgsql`, `APP_LOCALE=en`, `APP_TIMEZONE=Asia/Jakarta`, variabel disk `photos`, dan variabel seeder.
+
+Catatan per OS:
+- **Linux (Ubuntu/Arch):** pasang ekstensi `pdo_pgsql` (Ubuntu: `sudo apt install php8.4-pgsql`; Arch: aktifkan `extension=pdo_pgsql` dan `extension=pgsql` di `/etc/php/php.ini`).
+- **Windows:** PHP dari php.new/Herd Lite **tidak** punya `pdo_pgsql`. Pakai PHP resmi: `winget install PHP.PHP.NTS.8.4`, lalu aktifkan `pdo_pgsql`, `pgsql`, `intl`, `zip`, `fileinfo`, `gd`, `sodium` di `php.ini`.
 
 ### 9.2 Struktur folder (tambahan di atas default Laravel)
 ```
 app/
-  Enums/            # TreeStatus, ActivityType, HarvestUnit, HarvestGrade, ExpenseCategory, UserRole
-  Models/
-  Policies/
+  Enums/            # TreeStatus, ActivityType, HarvestUnit, HarvestGrade, ExpenseCategory, UserRole (+ Concerns/HasOptions)
+  Http/Middleware/  # EnsureUserHasRole (alias `role`)
+  Models/           # + Concerns/RecordsAuthor (isi user_id/created_by otomatis)
+  Policies/         # satu policy per model, auto-discovered
   Services/         # SaleService (validasi sisa stok), ReportService, dll.
-  Livewire/         # (atau struktur bawaan starter kit) dikelompokkan per modul
+  Support/          # Format (tanggal, angka, IDR)
+resources/views/pages/  # halaman Livewire single-file, per modul: pages/trees/, pages/care-logs/, ...
 database/{migrations,factories,seeders}
 resources/views/    # dikelompokkan per modul: trees/, care-logs/, ...
 lang/en/
 tests/Feature/
 docs/               # ERD (png/pdf), PRD, catatan
 ```
-Ikuti pola Livewire dari starter kit; jangan mencampur dua gaya (mis. Volt dan class component) tanpa alasan. Cek panduan Laravel Boost di `AGENTS.md`/`CLAUDE.md` hasil generate.
+Ikuti pola Livewire dari starter kit; jangan mencampur dua gaya (mis. single-file dan class component) tanpa alasan. Konvensi teknis yang sudah tersedia (komponen, helper, policy, dst.) dirangkum di `AGENTS.md` (di-commit; `CLAUDE.md` hanya mengimpornya). Laravel Boost tidak terpasang.
 
 ### 9.3 Alur Git
 - Repo GitHub **publik**. Branch `main` = selalu bisa jalan dan ter-deploy. **Dilarang push langsung ke `main`.**
@@ -437,7 +448,7 @@ Anggap disk lokal server bersifat **sementara / tidak persisten**. Maka:
 
 ### 10.3 Abstraksi penyimpanan foto (akan "diakali" belakangan)
 - Semua kode foto hanya boleh memakai disk Laravel bernama **`photos`**: `Storage::disk('photos')`. **Dilarang** memakai `public_path()`, `storage_path()`, atau path file langsung.
-- Konfigurasi `config/filesystems.php`: disk `photos` membaca `PHOTO_DISK` dari env (default pengembangan = disk `public` lokal). Saat deploy, `PHOTO_DISK` diarahkan ke penyimpanan eksternal berbasis S3 (kandidat: Supabase Storage, Cloudinary, Cloudflare R2) tanpa mengubah kode fitur.
+- Konfigurasi `config/filesystems.php`: disk `photos` memakai driver dari `PHOTO_DISK` (default `local`, folder `storage/app/public/photos`, butuh `php artisan storage:link`). Saat deploy: `PHOTO_DISK=s3`, `PHOTO_DISK_ROOT=photos`, dan isi `PHOTO_S3_*` (kandidat: Supabase Storage, Cloudflare R2) tanpa mengubah kode fitur. Driver S3 butuh paket `league/flysystem-aws-s3-v3` (dipasang saat keputusan penyimpanan diambil).
 - URL foto selalu lewat method model (mis. `$tree->photo_url`), tidak dirangkai manual di view.
 - Validasi unggah: `image`, mimes `jpg,jpeg,png,webp`, maks. 2048 KB. Hapus file lama saat foto diganti/pohon dihapus permanen.
 - Cadangan terakhir bila semua opsi gagal: simpan foto kecil (≤ 500 KB) sebagai data di database; keputusan ini hanya diambil tim bersama.
@@ -523,6 +534,9 @@ Jika jadwal meleset, potong dulu: PDF export, grafik tambahan, dan fitur foto di
 | 3 | Layanan penyimpanan foto produksi | belum diputuskan |
 | 4 | Ekspor PDF laporan (opsional) | belum diputuskan |
 | 5 | Verifikasi email diaktifkan? | tidak (default) |
+| 6 | Versi framework (PRD awal menyebut Laravel 12) | Laravel 13 + Livewire 4, mengikuti hasil starter kit terbaru (22 Okt) |
+| 7 | Fitur auth starter kit | registration, password confirmation, 2FA dipakai; passkeys dan email verification dibuang (22 Okt) |
+| 8 | Database tes | PostgreSQL `harvesta_testing`, bukan SQLite in-memory (22 Okt) |
 
 ---
 
