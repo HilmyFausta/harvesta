@@ -519,8 +519,9 @@ Jika jadwal meleset, potong dulu: PDF export, grafik tambahan, dan fitur foto di
 **Keamanan dasar:** CSRF aktif (bawaan), password di-hash, mass assignment dilindungi (`$fillable`), validasi unggahan file, tidak ada SQL mentah tanpa binding, `APP_DEBUG=false` di produksi, rahasia hanya di env/secrets.
 
 **Catatan uji deploy (isi saat Tahap 1)**
-- Hasil uji Wasmer (ekstensi PHP, koneksi PostgreSQL, session/cache, log): _belum diuji_
-- Keputusan penyimpanan foto produksi: _belum diputuskan_
+- Hasil uji Wasmer (ekstensi PHP, koneksi PostgreSQL, session/cache, log): **tidak dapat dilanjutkan** — registry Wasmer hanya menyediakan `php/php` sampai 8.3.4, sedangkan `composer.lock` mensyaratkan PHP >= 8.4.1 (Symfony 8).
+- Alternatif: scaffold **Docker + Render** (`Dockerfile`, `docker/start.sh`, `render.yaml`) sudah dibuat; image berhasil di-build dan container berhasil menjalankan migrasi, cache, route/view cache, `storage:link`, serta server di `/login`.
+- Keputusan penyimpanan foto produksi: _belum diputuskan_ (sementara `PHOTO_DISK=local`).
 
 ---
 

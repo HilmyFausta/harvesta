@@ -20,7 +20,7 @@
                     @foreach ($upcomingCare as $careLog)
                         <tr>
                             <td class="py-3">
-                                <a href="{{ route('trees.show', $careLog->tree) }}" class="font-medium text-zinc-800 hover:text-lime-600 dark:text-white dark:hover:text-lime-400" wire:navigate>
+                                <a href="{{ \Illuminate\Support\Facades\Route::has('trees.show') ? route('trees.show', $careLog->tree) : route('trees.index') }}" class="font-medium text-zinc-800 hover:text-lime-600 dark:text-white dark:hover:text-lime-400" wire:navigate>
                                     {{ $careLog->tree->code }}
                                 </a>
                             </td>
