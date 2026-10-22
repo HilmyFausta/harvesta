@@ -10,8 +10,12 @@ Route::middleware('auth')->group(function () {
     // Placeholder pages (PRD 7.1). Each module owner replaces its line with
     // the real routes, keeping the `<module>.index` route name.
     Route::view('trees', 'coming-soon', ['title' => 'Trees'])->name('trees.index');
-    Route::view('care-logs', 'coming-soon', ['title' => 'Care Logs'])->name('care-logs.index');
-    Route::view('harvests', 'coming-soon', ['title' => 'Harvests'])->name('harvests.index');
+    Route::livewire('care-logs', 'pages::care-logs.index')->name('care-logs.index');
+    Route::livewire('care-logs/create', 'pages::care-logs.create')->name('care-logs.create');
+    Route::livewire('care-logs/{careLog}/edit', 'pages::care-logs.edit')->name('care-logs.edit');
+    Route::livewire('harvests', 'pages::harvests.index')->name('harvests.index');
+    Route::livewire('harvests/create', 'pages::harvests.create')->name('harvests.create');
+    Route::livewire('harvests/{harvest}/edit', 'pages::harvests.edit')->name('harvests.edit');
     Route::view('categories', 'coming-soon', ['title' => 'Categories'])->name('categories.index');
     Route::view('tree-types', 'coming-soon', ['title' => 'Tree Types'])->name('tree-types.index');
     Route::view('blocks', 'coming-soon', ['title' => 'Blocks'])->name('blocks.index');
