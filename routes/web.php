@@ -17,10 +17,14 @@ Route::middleware('auth')->group(function () {
     Route::view('blocks', 'coming-soon', ['title' => 'Blocks'])->name('blocks.index');
 
     Route::middleware('role:admin')->group(function () {
-        Route::view('expenses', 'coming-soon', ['title' => 'Expenses'])->name('expenses.index');
+        Route::livewire('expenses', 'pages::expenses.index')->name('expenses.index');
+        Route::livewire('expenses/create', 'pages::expenses.create')->name('expenses.create');
+        Route::livewire('expenses/{expense}/edit', 'pages::expenses.edit')->name('expenses.edit');
         Route::view('sales', 'coming-soon', ['title' => 'Sales'])->name('sales.index');
         Route::view('reports', 'coming-soon', ['title' => 'Reports'])->name('reports.index');
-        Route::view('users', 'coming-soon', ['title' => 'Users'])->name('users.index');
+        Route::livewire('users', 'pages::users.index')->name('users.index');
+        Route::livewire('users/create', 'pages::users.create')->name('users.create');
+        Route::livewire('users/{user}/edit', 'pages::users.edit')->name('users.edit');
     });
 });
 
