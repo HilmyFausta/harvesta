@@ -53,32 +53,74 @@ Dikerjakan sekali oleh pemilik akun GitHub repo. Total ±20–30 menit. Siapkan 
 
 ---
 
-## Bagian B — Render
+## Bagian B — Render (Web Service manual, tanpa kartu kredit)
 
-### B1. Pastikan kode terbaru sudah di `main` di GitHub
-`render.yaml`, `Dockerfile`, dan `docker/start.sh` harus sudah ter-push.
+> Jangan pakai **New → Blueprint**: fitur Blueprint meminta kartu kredit. Web Service gratis yang dibuat manual tidak. `render.yaml` tetap di repo sebagai referensi daftar variabel.
 
-### B2. Buat Blueprint
-1. Buka <https://render.com> → **Sign in with GitHub** (akun pemilik repo).
-2. **New +** → **Blueprint**.
-3. Hubungkan GitHub bila diminta, lalu pilih repo ini, branch `main`.
-4. Blueprint Name: `harvesta`. Render membaca `render.yaml` dan menampilkan service `harvesta` (Free, Singapore).
-5. Render meminta nilai variabel yang bertanda `sync: false`. Isi:
+### B1. Siapkan `APP_KEY`
+Di laptop (folder proyek), jalankan:
+```bash
+php artisan key:generate --show
+```
+📋 Salin hasilnya (`base64:...`) → `APP_KEY`. Jangan dijalankan tanpa `--show` (itu mengubah `.env` lokal).
 
-| Variabel | Nilai |
-|----------|-------|
-| `DB_HOST` | dari A2 |
-| `DB_USERNAME` | dari A2 (`postgres.<project-ref>`) |
-| `DB_PASSWORD` | dari A1 |
-| `PHOTO_DISK_URL` | dari A4 langkah 7 |
-| `PHOTO_S3_ENDPOINT` | dari A4 |
-| `PHOTO_S3_REGION` | dari A4 |
-| `PHOTO_S3_ACCESS_KEY_ID` | dari A4 |
-| `PHOTO_S3_SECRET_ACCESS_KEY` | dari A4 |
-| `SEED_ADMIN_PASSWORD` | password demo admin (buat sendiri, min. 8 karakter, **bukan** `password`) |
-| `SEED_STAFF_PASSWORD` | password demo staff |
+### B2. Buat Web Service
+1. Pastikan kode terbaru sudah di `main` di GitHub.
+2. Buka <https://render.com> → **Sign in with GitHub** (akun pemilik repo).
+3. **New +** → **Web Service** → pilih repo ini (hubungkan GitHub bila diminta).
+4. Isi form:
+   - Name: `harvesta`
+   - Language / Runtime: **Docker**
+   - Branch: `main`
+   - Region: **Singapore**
+   - Root Directory: kosongkan
+   - Instance Type: **Free**
+5. Bagian **Environment Variables** → klik **Add from .env** → tempel blok di bawah, lalu ganti semua nilai `<...>`:
 
-6. **Apply** / **Deploy Blueprint**.
+```dotenv
+APP_NAME=Harvesta
+APP_ENV=production
+APP_DEBUG=false
+APP_KEY=<dari B1>
+APP_TIMEZONE=Asia/Jakarta
+APP_LOCALE=en
+APP_FALLBACK_LOCALE=en
+LOG_CHANNEL=stderr
+LOG_LEVEL=warning
+PHP_CLI_SERVER_WORKERS=4
+
+DB_CONNECTION=pgsql
+DB_HOST=<dari A2>
+DB_PORT=5432
+DB_DATABASE=postgres
+DB_USERNAME=<dari A2, postgres.xxxx>
+DB_PASSWORD=<dari A1>
+DB_SSLMODE=require
+
+SESSION_DRIVER=database
+CACHE_STORE=database
+QUEUE_CONNECTION=sync
+MAIL_MAILER=log
+
+PHOTO_DISK=s3
+PHOTO_DISK_ROOT=photos
+PHOTO_DISK_URL=<dari A4 langkah 7>
+PHOTO_S3_ENDPOINT=<dari A4>
+PHOTO_S3_REGION=<dari A4>
+PHOTO_S3_BUCKET=harvesta-photos
+PHOTO_S3_ACCESS_KEY_ID=<dari A4>
+PHOTO_S3_SECRET_ACCESS_KEY=<dari A4>
+PHOTO_S3_USE_PATH_STYLE_ENDPOINT=true
+
+SEED_ADMIN_EMAIL=admin@example.com
+SEED_ADMIN_PASSWORD=<buat sendiri, bukan "password">
+SEED_STAFF_EMAIL=staff@example.com
+SEED_STAFF_PASSWORD=<buat sendiri>
+SEED_DEMO_DATA=true
+```
+
+6. Buka **Advanced** → **Health Check Path**: `/up`. **Auto-Deploy**: On Commit (default).
+7. **Deploy Web Service**.
 
 ### B3. Pantau deploy pertama
 1. Buka service `harvesta` → tab **Logs**. Build Docker memakan ±5–10 menit.
@@ -106,6 +148,7 @@ Setelah ini, setiap push ke `main` otomatis deploy ulang. Data dan foto tetap am
 | `could not translate host name` / `Network is unreachable` | Memakai *Direct connection*. Ganti `DB_HOST` ke host **Session pooler** (A2). |
 | `password authentication failed` / `Tenant or user not found` | `DB_USERNAME` harus `postgres.<project-ref>`, bukan `postgres` saja. Cek juga `DB_PASSWORD`. |
 | `Set SEED_ADMIN_PASSWORD before seeding in production.` | `SEED_ADMIN_PASSWORD`/`SEED_STAFF_PASSWORD` belum diisi di Render → Environment. |
+| `APP_KEY is not set.` / `No application encryption key` | Isi `APP_KEY` dari B1 (harus diawali `base64:`). |
 | Halaman tampil tanpa CSS | Hard refresh (Ctrl+F5). Bila tetap, cek log build bagian `pnpm run build`. |
 | Ikon pohon (bukan foto) di semua pohon | Upload foto saat seeding gagal (lihat log: error S3). Perbaiki variabel `PHOTO_*`, lalu reset data (bawah). |
 | Gambar rusak | Bucket belum **Public**, atau `PHOTO_DISK_URL` salah (harus berakhiran `/object/public/harvesta-photos`). |

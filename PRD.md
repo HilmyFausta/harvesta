@@ -434,7 +434,7 @@ Ikuti pola Livewire dari starter kit; jangan mencampur dua gaya (mis. single-fil
 ### 10.1 Target deploy: Render + Supabase (diputuskan 23 Okt)
 Langkah lengkap: [`docs/DEPLOY.md`](docs/DEPLOY.md).
 
-- **Aplikasi:** Render Free Web Service (Docker, region Singapore) memakai `Dockerfile`, `docker/start.sh`, dan `render.yaml` (Blueprint) di repo. Auto-deploy setiap push ke `main`.
+- **Aplikasi:** Render Free Web Service (Docker, region Singapore) memakai `Dockerfile` dan `docker/start.sh` di repo, dibuat manual sebagai Web Service (Blueprint meminta kartu kredit; `render.yaml` hanya referensi variabel). Auto-deploy setiap push ke `main`.
 - **Database:** Supabase PostgreSQL (free, tidak kedaluwarsa) lewat koneksi *Session pooler* (IPv4, `sslmode=require`). Database gratis Render tidak dipakai karena kedaluwarsa 30 hari.
 - **Foto:** Supabase Storage, bucket publik `harvesta-photos`, diakses lewat protokol S3 (`PHOTO_DISK=s3`).
 - **Data demo:** `start.sh` menjalankan `migrate --force` lalu `db:seed --force` setiap boot. Aman diulang: akun dan master data di-*upsert*, data demo (40 pohon + 32 foto) hanya dibuat jika tabel `trees` masih kosong.
