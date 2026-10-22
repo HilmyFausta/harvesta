@@ -48,6 +48,6 @@ php artisan test                    # needs the harvesta_testing database
 - Lists: paginate 15, eager-load relations (`with()`), no N+1.
 - Validate on the server; protect mass assignment with `#[Fillable]`.
 - Schema changes go in a **new** migration, plus PRD section 6 update, announced to the team.
-- Only edit your own area (PRD section 12). Shared files (layout, `routes/web.php`, providers, config) change through small PRs. To ship a module, replace its placeholder `Route::view(... 'coming-soon' ...)` line and keep the `<module>.index` route name.
-- Branch `feature/<module>-<desc>`, Conventional Commits, PR into `main`. Never push to `main`.
+- Only edit your own area (PRD section 12). Shared files (layout, `routes/web.php`, providers, config) change in small, separate commits. To ship a module, replace its placeholder `Route::view(... 'coming-soon' ...)` line and keep the `<module>.index` route name.
+- The team works directly on `main` (no feature branches, no PRs). Use Conventional Commits and keep `main` runnable. Never push yourself; the human pushes.
 - Do not report a task as done while Pint, PHPStan, or tests fail.

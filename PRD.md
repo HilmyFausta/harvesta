@@ -184,7 +184,7 @@ Semua fitur: tabel dengan pencarian, filter, sortir, pagination (15/halaman), ko
 
 ## 6. Desain Database (PostgreSQL)
 
-> Skema di bawah adalah **acuan CDM/PDM** (digambar di Vertabelo/Redgate) dan **acuan migration**. Sumber kebenaran runtime adalah migration Laravel; setiap perubahan skema harus memperbarui bagian ini dan diagram, lewat PR.
+> Skema di bawah adalah **acuan CDM/PDM** (digambar di Vertabelo/Redgate) dan **acuan migration**. Sumber kebenaran runtime adalah migration Laravel; setiap perubahan skema harus memperbarui bagian ini dan diagram, dan dikabarkan ke tim.
 
 Konvensi: nama tabel jamak snake_case; PK `id` (bigint, auto-increment); semua tabel punya `created_at`, `updated_at`; waktu `timestamp`; uang `decimal(14,2)`; enum diimplementasikan sebagai `string` + PHP backed Enum + validasi (bukan tipe enum native DB, agar migrasi mudah).
 
@@ -415,11 +415,10 @@ docs/               # ERD (png/pdf), PRD, catatan
 Ikuti pola Livewire dari starter kit; jangan mencampur dua gaya (mis. single-file dan class component) tanpa alasan. Konvensi teknis yang sudah tersedia (komponen, helper, policy, dst.) dirangkum di `AGENTS.md` (di-commit; `CLAUDE.md` hanya mengimpornya). Laravel Boost tidak terpasang.
 
 ### 9.3 Alur Git
-- Repo GitHub **publik**. Branch `main` = selalu bisa jalan dan ter-deploy. **Dilarang push langsung ke `main`.**
-- Branch kerja: `feature/<modul>-<deskripsi>`, contoh `feature/trees-crud`. Satu fitur = satu branch = satu PR.
-- Commit message memakai Conventional Commits berbahasa Inggris: `feat(trees): add tree photo upload`, `fix(sales): validate remaining quantity`, `docs: update prd`.
-- Sebelum PR: `git pull --rebase origin main`, jalankan `./vendor/bin/pint`, `php artisan test`, dan `php artisan migrate:fresh --seed` tanpa error.
-- PR minimal direview satu anggota lain, lalu *squash and merge*.
+- Repo GitHub **publik**. **Semua anggota bekerja langsung di branch `main`** (keputusan tim, 22 Okt); tidak memakai feature branch atau PR. Karena itu `main` harus tetap bisa jalan setiap kali di-push.
+- Commit kecil dan sering, memakai Conventional Commits berbahasa Inggris: `feat(trees): add tree photo upload`, `fix(sales): validate remaining quantity`, `docs: update prd`.
+- Alur harian: `git pull --rebase origin main` sebelum mulai kerja dan sebelum push → jalankan `./vendor/bin/pint`, `php artisan test`, dan `php artisan migrate:fresh --seed` tanpa error → `git push origin main`.
+- Konflik saat rebase diselesaikan oleh anggota yang sedang push; jika konflik menyentuh area anggota lain, diskusikan dulu.
 - `.gitignore` wajib mencakup `.env`, `/vendor`, `/node_modules`, `/storage/*.key`, file upload lokal, dan berkas IDE.
 - **Jangan pernah commit** `.env`, kunci API, password, atau data pribadi. Jika bocor, rotasi kunci.
 
@@ -471,7 +470,7 @@ Kumpulkan sejak awal: screenshot tiap halaman (data seeder sudah terisi), catata
 
 ## 12. Pembagian Tugas dan Kepemilikan File
 
-Setiap anggota (dan AI agent-nya) **hanya mengedit area miliknya**. Perubahan di area orang lain harus lewat diskusi/PR kecil terpisah. File bersama (layout, navigasi, route, `AppServiceProvider`, config) diubah lewat PR kecil agar mudah di-merge.
+Setiap anggota (dan AI agent-nya) **hanya mengedit area miliknya**. Perubahan di area orang lain harus didiskusikan dulu. File bersama (layout, navigasi, route, `AppServiceProvider`, config) diubah dalam commit kecil terpisah agar konflik mudah diselesaikan.
 
 | Anggota | Tanggung jawab utama | Area kepemilikan |
 |---------|----------------------|------------------|
@@ -489,7 +488,7 @@ Semua anggota: menulis feature test untuk modulnya, ikut mengisi laporan (screen
 |---------|--------|------------------|
 | 21 Okt | PRD disepakati; CDM/PDM dibuat; repo GitHub + setup lokal berjalan di ketiga OS | Semua |
 | 22 Okt | Migration, model, enum, seeder di-merge ke `main`; layout dan sidebar; **deploy kerangka kosong ke Wasmer** | A, C |
-| 22–25 Okt | Fitur dikerjakan paralel sesuai area (PR kecil dan sering) | A, B, C |
+| 22–25 Okt | Fitur dikerjakan paralel sesuai area (commit kecil dan sering ke `main`) | A, B, C |
 | 25 Okt | Semua fitur F-01..F-11 *feature-complete* | Semua |
 | 26 Okt | Integrasi, perbaikan bug, polish UI, uji lintas peran, uji mobile | Semua |
 | 27 Okt | Deploy final, foto di produksi, screenshot final, tulis laporan, tanda tangan Declaration | Semua |
@@ -515,7 +514,7 @@ Jika jadwal meleset, potong dulu: PDF export, grafik tambahan, dan fitur foto di
 4. Tidak ada N+1 pada halaman daftar; ada pagination.
 5. Feature test minimal untuk happy path dan satu kasus gagal; `pint` bersih.
 6. Berjalan di `migrate:fresh --seed` dan di lingkungan semua anggota (Ubuntu/Arch/Windows).
-7. PR sudah direview dan di-merge; screenshot tersedia untuk laporan.
+7. Sudah di-push ke `main` dan dicek anggota lain; screenshot tersedia untuk laporan.
 
 **Keamanan dasar:** CSRF aktif (bawaan), password di-hash, mass assignment dilindungi (`$fillable`), validasi unggahan file, tidak ada SQL mentah tanpa binding, `APP_DEBUG=false` di produksi, rahasia hanya di env/secrets.
 
@@ -537,6 +536,7 @@ Jika jadwal meleset, potong dulu: PDF export, grafik tambahan, dan fitur foto di
 | 6 | Versi framework (PRD awal menyebut Laravel 12) | Laravel 13 + Livewire 4, mengikuti hasil starter kit terbaru (22 Okt) |
 | 7 | Fitur auth starter kit | registration, password confirmation, 2FA dipakai; passkeys dan email verification dibuang (22 Okt) |
 | 8 | Database tes | PostgreSQL `harvesta_testing`, bukan SQLite in-memory (22 Okt) |
+| 9 | Alur Git | semua kerja langsung di `main`, tanpa feature branch/PR (keputusan tim, 22 Okt) |
 
 ---
 
@@ -548,7 +548,7 @@ Berlaku untuk semua agent di laptop semua anggota:
 3. **Jangan** mengganti teknologi (pnpm, PostgreSQL, Livewire, Wasmer), menambah dependency besar, atau mengubah arsitektur tanpa persetujuan tim.
 4. **Seluruh teks UI dalam bahasa Inggris yang benar**; kode dan commit juga Inggris.
 5. Gunakan `config('app.name')`, disk `photos`, Policy, Form Request/validasi, eager loading, dan pagination sesuai PRD.
-6. Jangan menulis file ke disk server untuk data aplikasi; jangan commit rahasia; jangan push ke `main`.
+6. Jangan menulis file ke disk server untuk data aplikasi; jangan commit rahasia; jangan push kecuali diminta anggota tim (push dilakukan oleh manusia).
 7. Jalankan `pint` dan tes sebelum menyatakan tugas selesai. Jangan menyatakan selesai jika tes gagal.
 8. Bila instruksi pengguna bertentangan dengan PRD, beri tahu pengguna dan minta mereka memperbarui PRD terlebih dahulu.
 9. Pertahankan perubahan sekecil mungkin dan terarah; jangan merapikan/mengubah file yang tidak terkait tugas.
