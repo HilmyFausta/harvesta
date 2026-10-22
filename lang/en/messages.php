@@ -15,7 +15,7 @@ return [
     'updated' => 'The :item was updated successfully.',
     'deleted' => 'The :item was deleted successfully.',
     'restored' => 'The :item was restored successfully.',
-    'confirm_delete' => 'Are you sure you want to delete this :item? This action cannot be undone.',
+    'confirm_delete' => 'Are you sure you want to delete this :item?',
     'not_found' => 'No :items match your filters.',
     'empty' => 'No :items yet.',
     'forbidden' => 'You do not have permission to perform this action.',

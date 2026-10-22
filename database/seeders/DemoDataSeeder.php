@@ -20,6 +20,9 @@ use Carbon\CarbonImmutable;
 use Faker\Generator;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Seeder;
+use Illuminate\Http\File;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class DemoDataSeeder extends Seeder
 {
@@ -135,7 +138,31 @@ class DemoDataSeeder extends Seeder
             }
         }
 
-        return $trees->load('treeType');
+        $trees->load('treeType');
+
+        // Seedlings and dead trees keep the "no photo" placeholder.
+        $trees->reject(fn (Tree $tree): bool => in_array($tree->status, [TreeStatus::Seedling, TreeStatus::Dead], true))
+            ->each(fn (Tree $tree) => $this->attachPhoto($tree));
+
+        return $trees;
+    }
+
+    /**
+     * Copy the sample photo of the tree type (database/seeders/photos) to the photos disk.
+     */
+    protected function attachPhoto(Tree $tree): void
+    {
+        $source = database_path('seeders/photos/'.Str::slug($tree->treeType->name).'.jpg');
+
+        if (! is_file($source)) {
+            return;
+        }
+
+        $path = Storage::disk('photos')->putFileAs('trees', new File($source), Str::lower($tree->code).'.jpg');
+
+        if ($path !== false) {
+            $tree->forceFill(['photo_path' => $path])->saveQuietly();
+        }
     }
 
     /**
