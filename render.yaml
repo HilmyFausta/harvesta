@@ -1,7 +1,8 @@
 # Render Blueprint (PRD 10): the app runs on Render's free Docker web service,
 # while PostgreSQL and tree photos live on Supabase (free, persistent).
-# Variables marked `sync: false` are asked for once when the Blueprint is
-# created and are never stored in the repository.
+# Blueprints require a credit card on Render, so we create the free Web Service
+# by hand (docs/DEPLOY.md) and keep this file as the reference list of
+# variables. Values marked `sync: false` are secrets and never live in the repo.
 services:
   - type: web
     name: harvesta
