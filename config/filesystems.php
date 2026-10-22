@@ -48,8 +48,8 @@ return [
         ],
 
         // Tree photos. Feature code must only use Storage::disk('photos').
-        // Set PHOTO_DISK=s3 (plus the PHOTO_S3_* variables) to move photos to
-        // S3-compatible storage such as Supabase Storage or Cloudflare R2.
+        // Production uses PHOTO_DISK=s3 with a public Supabase Storage bucket
+        // (see PRD 10). Access is controlled by the bucket, not per-object ACLs.
         'photos' => [
             'driver' => env('PHOTO_DISK', 'local'),
             'root' => env('PHOTO_DISK_ROOT', storage_path('app/public/photos')),
@@ -62,7 +62,7 @@ return [
             'endpoint' => env('PHOTO_S3_ENDPOINT'),
             'use_path_style_endpoint' => (bool) env('PHOTO_S3_USE_PATH_STYLE_ENDPOINT', true),
             'throw' => false,
-            'report' => false,
+            'report' => true,
         ],
 
         's3' => [

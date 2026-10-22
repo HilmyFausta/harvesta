@@ -1,18 +1,19 @@
-databases:
-  - name: harvesta-db
-    databaseName: harvesta
-    user: harvesta
-    plan: free
-
+# Render Blueprint (PRD 10): the app runs on Render's free Docker web service,
+# while PostgreSQL and tree photos live on Supabase (free, persistent).
+# Variables marked `sync: false` are asked for once when the Blueprint is
+# created and are never stored in the repository.
 services:
   - type: web
     name: harvesta
     runtime: docker
     plan: free
+    region: singapore
     dockerfilePath: ./Dockerfile
     healthCheckPath: /up
     autoDeploy: true
     envVars:
+      - key: APP_NAME
+        value: Harvesta
       - key: APP_ENV
         value: production
       - key: APP_DEBUG
@@ -29,37 +30,62 @@ services:
         value: stderr
       - key: LOG_LEVEL
         value: warning
+      - key: PHP_CLI_SERVER_WORKERS
+        value: "4"
+
+      # Supabase PostgreSQL: use the "Session pooler" connection (IPv4).
       - key: DB_CONNECTION
         value: pgsql
       - key: DB_HOST
-        fromDatabase:
-          name: harvesta-db
-          property: host
+        sync: false
       - key: DB_PORT
-        fromDatabase:
-          name: harvesta-db
-          property: port
+        value: "5432"
       - key: DB_DATABASE
-        fromDatabase:
-          name: harvesta-db
-          property: database
+        value: postgres
       - key: DB_USERNAME
-        fromDatabase:
-          name: harvesta-db
-          property: user
+        sync: false
       - key: DB_PASSWORD
-        fromDatabase:
-          name: harvesta-db
-          property: password
+        sync: false
       - key: DB_SSLMODE
-        value: prefer
+        value: require
+
       - key: SESSION_DRIVER
         value: database
       - key: CACHE_STORE
         value: database
       - key: QUEUE_CONNECTION
-        value: database
+        value: sync
       - key: MAIL_MAILER
         value: log
+
+      # Supabase Storage (S3 protocol) with a public bucket for tree photos.
       - key: PHOTO_DISK
-        value: local
+        value: s3
+      - key: PHOTO_DISK_ROOT
+        value: photos
+      - key: PHOTO_DISK_URL
+        sync: false
+      - key: PHOTO_S3_ENDPOINT
+        sync: false
+      - key: PHOTO_S3_REGION
+        sync: false
+      - key: PHOTO_S3_BUCKET
+        value: harvesta-photos
+      - key: PHOTO_S3_ACCESS_KEY_ID
+        sync: false
+      - key: PHOTO_S3_SECRET_ACCESS_KEY
+        sync: false
+      - key: PHOTO_S3_USE_PATH_STYLE_ENDPOINT
+        value: "true"
+
+      # Demo accounts and sample data, created on the first boot.
+      - key: SEED_ADMIN_EMAIL
+        value: admin@example.com
+      - key: SEED_ADMIN_PASSWORD
+        sync: false
+      - key: SEED_STAFF_EMAIL
+        value: staff@example.com
+      - key: SEED_STAFF_PASSWORD
+        sync: false
+      - key: SEED_DEMO_DATA
+        value: "true"
