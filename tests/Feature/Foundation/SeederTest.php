@@ -17,11 +17,19 @@ use Database\Seeders\DatabaseSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class SeederTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        Storage::fake('photos');
+    }
 
     public function test_seeder_creates_the_expected_dataset(): void
     {
@@ -61,6 +69,17 @@ class SeederTest extends TestCase
         $this->assertSame(0, Tree::where('planted_on', '>', today())->count());
         $this->assertSame(0, Harvest::where('harvested_on', '>', today())->count());
         $this->assertTrue(CareLog::where('next_due_on', '<=', today()->addDays(7))->exists());
+    }
+
+    public function test_living_trees_get_a_sample_photo(): void
+    {
+        $this->seed(DatabaseSeeder::class);
+
+        $withPhoto = Tree::whereNotNull('photo_path')->get();
+
+        $this->assertCount(32, $withPhoto);
+        $withPhoto->each(fn (Tree $tree) => Storage::disk('photos')->assertExists($tree->photo_path));
+        $this->assertSame(0, Tree::whereIn('status', [TreeStatus::Seedling, TreeStatus::Dead])->whereNotNull('photo_path')->count());
     }
 
     public function test_harvests_cover_the_last_twelve_months(): void
