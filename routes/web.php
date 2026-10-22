@@ -10,7 +10,10 @@ Route::middleware('auth')->group(function () {
 
     // Placeholder pages (PRD 7.1). Each module owner replaces its line with
     // the real routes, keeping the `<module>.index` route name.
-    Route::view('trees', 'coming-soon', ['title' => 'Trees'])->name('trees.index');
+    Route::livewire('trees', 'pages::trees.index')->name('trees.index');
+    Route::livewire('trees/create', 'pages::trees.create')->name('trees.create');
+    Route::livewire('trees/{tree}', 'pages::trees.show')->name('trees.show');
+    Route::livewire('trees/{tree}/edit', 'pages::trees.edit')->name('trees.edit');
     Route::livewire('care-logs', 'pages::care-logs.index')->name('care-logs.index');
     Route::livewire('care-logs/create', 'pages::care-logs.create')->name('care-logs.create');
     Route::livewire('care-logs/{careLog}/edit', 'pages::care-logs.edit')->name('care-logs.edit');
