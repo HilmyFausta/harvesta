@@ -1,11 +1,12 @@
 <?php
 
+use App\Http\Controllers\ReportExportController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => to_route(auth()->check() ? 'dashboard' : 'login'))->name('home');
 
 Route::middleware('auth')->group(function () {
-    Route::view('dashboard', 'dashboard')->name('dashboard');
+    Route::livewire('dashboard', 'pages::dashboard.index')->name('dashboard');
 
     // Placeholder pages (PRD 7.1). Each module owner replaces its line with
     // the real routes, keeping the `<module>.index` route name.
@@ -31,8 +32,11 @@ Route::middleware('auth')->group(function () {
         Route::livewire('expenses', 'pages::expenses.index')->name('expenses.index');
         Route::livewire('expenses/create', 'pages::expenses.create')->name('expenses.create');
         Route::livewire('expenses/{expense}/edit', 'pages::expenses.edit')->name('expenses.edit');
-        Route::view('sales', 'coming-soon', ['title' => 'Sales'])->name('sales.index');
-        Route::view('reports', 'coming-soon', ['title' => 'Reports'])->name('reports.index');
+        Route::livewire('sales', 'pages::sales.index')->name('sales.index');
+        Route::livewire('sales/create', 'pages::sales.create')->name('sales.create');
+        Route::livewire('sales/{sale}/edit', 'pages::sales.edit')->name('sales.edit');
+        Route::livewire('reports', 'pages::reports.index')->name('reports.index');
+        Route::get('reports/export', ReportExportController::class)->name('reports.export');
         Route::livewire('users', 'pages::users.index')->name('users.index');
         Route::livewire('users/create', 'pages::users.create')->name('users.create');
         Route::livewire('users/{user}/edit', 'pages::users.edit')->name('users.edit');
