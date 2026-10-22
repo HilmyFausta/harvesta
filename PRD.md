@@ -474,8 +474,8 @@ Setiap anggota (dan AI agent-nya) **hanya mengedit area miliknya**. Perubahan di
 
 | Anggota | Tanggung jawab utama | Area kepemilikan |
 |---------|----------------------|------------------|
-| **A — Foundation & Core Data** | Setup proyek, **semua migration, enum, model, factory, seeder** (Tahap 1), layout + sidebar + role middleware/policy dasar, F-02 Categories, F-03 Tree Types, F-04 Blocks, F-05 Trees (+ foto) | `database/*`, `app/Enums`, `app/Models`, layout/navigasi, modul categories/tree-types/blocks/trees |
-| **B — Field Operations** | F-06 Care Logs, F-07 Harvests, widget "Upcoming Care", halaman detail Tree bagian timeline/harvest (berkoordinasi dengan A), Profile/auth polish dan teks Inggris, unit/feature test modulnya | modul care-logs, harvests, auth views |
+| **A — Foundation & Core Data** | Setup proyek, **semua migration, enum, model, factory, seeder** (Tahap 1), layout + sidebar + role middleware/policy dasar, F-05 Trees (+ foto) | `database/*`, `app/Enums`, `app/Models`, layout/navigasi, modul trees |
+| **B — Field Operations & Master Data** | F-02 Categories, F-03 Tree Types, F-04 Blocks, F-06 Care Logs, F-07 Harvests, widget "Upcoming Care", halaman detail Tree bagian timeline/harvest (berkoordinasi dengan A), Profile/auth polish dan teks Inggris, unit/feature test modulnya | modul categories, tree-types, blocks, care-logs, harvests, auth views |
 | **C — Finance & Insights** | F-08 Expenses, F-09 Sales (+ `SaleService`), F-01 Dashboard, F-10 Reports + CSV, F-11 Users, deploy pipeline (Wasmer + GitHub Actions) | modul expenses, sales, dashboard, reports, users, deploy config |
 
 Semua anggota: menulis feature test untuk modulnya, ikut mengisi laporan (screenshot dan penjelasan fitur miliknya), dan review PR anggota lain. Persentase kontribusi dihitung dari pekerjaan nyata (commit/PR, laporan, deploy), bukan dari rencana ini saja.

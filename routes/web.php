@@ -16,9 +16,16 @@ Route::middleware('auth')->group(function () {
     Route::livewire('harvests', 'pages::harvests.index')->name('harvests.index');
     Route::livewire('harvests/create', 'pages::harvests.create')->name('harvests.create');
     Route::livewire('harvests/{harvest}/edit', 'pages::harvests.edit')->name('harvests.edit');
-    Route::view('categories', 'coming-soon', ['title' => 'Categories'])->name('categories.index');
-    Route::view('tree-types', 'coming-soon', ['title' => 'Tree Types'])->name('tree-types.index');
-    Route::view('blocks', 'coming-soon', ['title' => 'Blocks'])->name('blocks.index');
+    Route::livewire('categories', 'pages::categories.index')->name('categories.index');
+    Route::livewire('categories/create', 'pages::categories.create')->name('categories.create');
+    Route::livewire('categories/{category}/edit', 'pages::categories.edit')->name('categories.edit');
+    Route::livewire('tree-types', 'pages::tree-types.index')->name('tree-types.index');
+    Route::livewire('tree-types/create', 'pages::tree-types.create')->name('tree-types.create');
+    Route::livewire('tree-types/{treeType}/edit', 'pages::tree-types.edit')->name('tree-types.edit');
+    Route::livewire('blocks', 'pages::blocks.index')->name('blocks.index');
+    Route::livewire('blocks/create', 'pages::blocks.create')->name('blocks.create');
+    Route::livewire('blocks/{block}', 'pages::blocks.show')->name('blocks.show');
+    Route::livewire('blocks/{block}/edit', 'pages::blocks.edit')->name('blocks.edit');
 
     Route::middleware('role:admin')->group(function () {
         Route::livewire('expenses', 'pages::expenses.index')->name('expenses.index');
