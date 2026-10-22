@@ -7,7 +7,11 @@ if [ -z "${APP_KEY:-}" ]; then
     exit 1
 fi
 
-export APP_URL="${APP_URL:-${RENDER_EXTERNAL_URL:-http://localhost:8080}}"
+# Azure App Service exposes the public host name as WEBSITE_HOSTNAME.
+if [ -z "${APP_URL:-}" ] && [ -n "${WEBSITE_HOSTNAME:-}" ]; then
+    APP_URL="https://${WEBSITE_HOSTNAME}"
+fi
+export APP_URL="${APP_URL:-http://localhost:8080}"
 
 php artisan package:discover --ansi
 php artisan migrate --force

@@ -36,21 +36,12 @@ class ProductionConfigTest extends TestCase
     {
         $this->get('/login', [
             'X-Forwarded-Proto' => 'https',
-            'X-Forwarded-Host' => 'harvesta.onrender.com',
+            'X-Forwarded-Host' => 'harvesta.azurewebsites.net',
             'X-Forwarded-Port' => '443',
         ])
             ->assertOk()
-            ->assertSee('https://harvesta.onrender.com', false)
-            ->assertDontSee('http://harvesta.onrender.com', false);
-    }
-
-    public function test_the_render_blueprint_keeps_secrets_out_of_the_repository(): void
-    {
-        $blueprint = (string) file_get_contents(base_path('render.yaml'));
-
-        foreach (['DB_PASSWORD', 'PHOTO_S3_SECRET_ACCESS_KEY', 'SEED_ADMIN_PASSWORD', 'SEED_STAFF_PASSWORD'] as $secret) {
-            $this->assertMatchesRegularExpression("/key: {$secret}\n\s+sync: false/", $blueprint);
-        }
+            ->assertSee('https://harvesta.azurewebsites.net', false)
+            ->assertDontSee('http://harvesta.azurewebsites.net', false);
     }
 
     public function test_seeding_in_production_requires_real_passwords(): void
