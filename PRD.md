@@ -431,11 +431,16 @@ Ikuti pola Livewire dari starter kit; jangan mencampur dua gaya (mis. single-fil
 
 ## 10. Deployment dan Penyimpanan Foto
 
-### 10.1 Target deploy: Wasmer Edge (wasmer.io)
-- Status: **ditunda sampai fitur inti selesai**, tetapi **kerangka kosong wajib di-deploy lebih awal (Tahap 1)** sebagai uji kelayakan.
-- Database: PostgreSQL terkelola Wasmer (engine **harus** dipilih PostgreSQL sejak awal; tidak bisa dikonversi).
-- Konfigurasi deploy (`wasmer.toml`, `app.yaml`) disimpan di repo.
-- Auto-deploy via GitHub Actions saat merge ke `main` (secret token Wasmer disimpan di GitHub Secrets).
+### 10.1 Target deploy: Render + Supabase (diputuskan 23 Okt)
+Langkah lengkap: [`docs/DEPLOY.md`](docs/DEPLOY.md).
+
+- **Aplikasi:** Render Free Web Service (Docker, region Singapore) memakai `Dockerfile`, `docker/start.sh`, dan `render.yaml` (Blueprint) di repo. Auto-deploy setiap push ke `main`.
+- **Database:** Supabase PostgreSQL (free, tidak kedaluwarsa) lewat koneksi *Session pooler* (IPv4, `sslmode=require`). Database gratis Render tidak dipakai karena kedaluwarsa 30 hari.
+- **Foto:** Supabase Storage, bucket publik `harvesta-photos`, diakses lewat protokol S3 (`PHOTO_DISK=s3`).
+- **Data demo:** `start.sh` menjalankan `migrate --force` lalu `db:seed --force` setiap boot. Aman diulang: akun dan master data di-*upsert*, data demo (40 pohon + 32 foto) hanya dibuat jika tabel `trees` masih kosong.
+- **Rahasia** (`DB_PASSWORD`, kunci S3, `SEED_*_PASSWORD`) hanya diisi di dashboard Render (`sync: false`), tidak pernah di repo.
+- Wasmer Edge tidak dipakai: dukungan ekstensi PHP (`pdo_pgsql`, `gd`, `intl`) tidak terdokumentasi dan PostgreSQL-nya hanya di region Eropa/Kanada.
+- Batasan free tier: Render tidur setelah 15 menit idle (buka ±1 menit sebelum demo); project Supabase di-*pause* setelah ±1 minggu tidak aktif (aktifkan lagi dari dashboard).
 
 ### 10.2 Batasan runtime yang harus dipatuhi sejak sekarang
 Anggap disk lokal server bersifat **sementara / tidak persisten**. Maka:
@@ -521,7 +526,7 @@ Jika jadwal meleset, potong dulu: PDF export, grafik tambahan, dan fitur foto di
 **Catatan uji deploy (isi saat Tahap 1)**
 - Hasil uji Wasmer (ekstensi PHP, koneksi PostgreSQL, session/cache, log): **tidak dapat dilanjutkan** — registry Wasmer hanya menyediakan `php/php` sampai 8.3.4, sedangkan `composer.lock` mensyaratkan PHP >= 8.4.1 (Symfony 8).
 - Alternatif: scaffold **Docker + Render** (`Dockerfile`, `docker/start.sh`, `render.yaml`) sudah dibuat; image berhasil di-build dan container berhasil menjalankan migrasi, cache, route/view cache, `storage:link`, serta server di `/login`.
-- Keputusan penyimpanan foto produksi: _belum diputuskan_ (sementara `PHOTO_DISK=local`).
+- Keputusan penyimpanan foto produksi: Supabase Storage (lihat 10.1) (sementara `PHOTO_DISK=local`).
 
 ---
 
@@ -531,7 +536,7 @@ Jika jadwal meleset, potong dulu: PDF export, grafik tambahan, dan fitur foto di
 |---|-----------|-----------|
 | 1 | Nama aplikasi final | `{{APP_NAME}}` |
 | 2 | Nama dan NRP anggota tim | `{{MEMBER_A/B/C}}` |
-| 3 | Layanan penyimpanan foto produksi | belum diputuskan |
+| 3 | Layanan penyimpanan foto produksi | Supabase Storage (S3), bucket publik `harvesta-photos` (23 Okt) |
 | 4 | Ekspor PDF laporan (opsional) | belum diputuskan |
 | 5 | Verifikasi email diaktifkan? | tidak (default) |
 | 6 | Versi framework (PRD awal menyebut Laravel 12) | Laravel 13 + Livewire 4, mengikuti hasil starter kit terbaru (22 Okt) |

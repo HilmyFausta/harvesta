@@ -11,6 +11,9 @@ export APP_URL="${APP_URL:-${RENDER_EXTERNAL_URL:-http://localhost:8080}}"
 
 php artisan package:discover --ansi
 php artisan migrate --force
+# Safe on every boot: accounts and master data are upserted, demo data
+# (trees, photos, harvests, ...) is only created when no trees exist yet.
+php artisan db:seed --force
 php artisan config:cache
 php artisan route:cache
 php artisan view:cache
