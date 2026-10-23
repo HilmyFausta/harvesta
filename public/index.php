@@ -5,6 +5,11 @@ use Illuminate\Http\Request;
 
 define('LARAVEL_START', microtime(true));
 
+// Wasmer initialization (run migrations on first boot)
+if (file_exists($wasmerInit = __DIR__.'/../bootstrap/wasmer-init.php')) {
+    require_once $wasmerInit;
+}
+
 // Determine if the application is in maintenance mode...
 if (file_exists($maintenance = __DIR__.'/../storage/framework/maintenance.php')) {
     require $maintenance;
