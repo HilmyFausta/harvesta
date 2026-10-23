@@ -1,0 +1,20 @@
+[package]
+name = "hilmyfausta/harvesta"
+version = "0.1.0"
+description = "Harvesta - Tree & Orchard Management System"
+readme = "README.md"
+
+[dependencies]
+"php/php" = "=8.3.4"
+
+[fs]
+"/app" = "."
+
+[[command]]
+name = "run"
+module = "php/php:php"
+runner = "wasi"
+
+[command.annotations.wasi]
+main-args = ["-c", "/app/php.ini", "-t", "/app/public", "-S", "0.0.0.0:8080"]
+env = ["APP_RUNNING_IN_WASMER=true"]

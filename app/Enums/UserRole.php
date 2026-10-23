@@ -10,6 +10,7 @@ enum UserRole: string
 
     case Admin = 'admin';
     case Staff = 'staff';
+    case Viewer = 'viewer';
 
     /**
      * Get the human-readable label.
@@ -19,6 +20,7 @@ enum UserRole: string
         return match ($this) {
             self::Admin => __('Admin'),
             self::Staff => __('Staff'),
+            self::Viewer => __('Viewer'),
         };
     }
 }
