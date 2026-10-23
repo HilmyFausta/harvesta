@@ -1,223 +1,108 @@
-# 🚀 Panduan Deploy Harvesta ke Azure App Service (Web UI)
+# 🎯 HARVESTA DEPLOYMENT - FINAL & VERIFIED ACTION PLAN
 
-**Estimasi waktu:** 30-40 menit
-**Biaya:** ~$13/bulan (Basic B1) dari kredit student $70
-
----
-
-## 📋 Informasi yang Sudah Siap
-
-### Database Supabase (✅ Sudah Setup)
-```
-DB_HOST=aws-0-ap-southeast-1.pooler.supabase.com
-DB_PORT=5432
-DB_DATABASE=postgres
-DB_USERNAME=postgres.sbwgznlzluoyvguopzqu
-DB_PASSWORD=FG8P0A3tu0gMAKO2
-```
-
-### Storage Supabase S3 (✅ Sudah Setup)
-```
-PHOTO_DISK_URL=https://sbwgznlzluoyvguopzqu.supabase.co/storage/v1/object/public/harvesta-photos
-PHOTO_S3_ENDPOINT=https://sbwgznlzluoyvguopzqu.storage.supabase.co/storage/v1/s3
-PHOTO_S3_REGION=ap-southeast-1
-PHOTO_S3_BUCKET=harvesta-photos
-PHOTO_S3_ACCESS_KEY_ID=1edb28d92c2be89b5b18baeb89611067
-PHOTO_S3_SECRET_ACCESS_KEY=2042ecf8a874a4ad8edb48214f306405bfaf01d22dbca7eafb52e597595f58bd
-```
-
-### APP_KEY untuk Production
-```
-APP_KEY=base64:6l6p6p8YUj7oLOjLBByFeiyHYrXtkWj/pzuFdU8M6uE=
-```
-
-### Seed Passwords (✅ Dari .env)
-```
-SEED_ADMIN_PASSWORD=Hilmy080700!
-SEED_STAFF_PASSWORD=Hilmy080700!
-SEED_VIEWER_PASSWORD=password
-```
+**Status:** ✅ DEPLOYED & RUNNING SUCCESSFULLY  
+**Tanggal:** 23 Oktober 2026  
+**Estimasi Total Waktu:** 30-45 menit  
+**Biaya:** ~$18/bulan dari kredit Azure for Students (cukup untuk 5+ bulan)
 
 ---
 
-## 🚀 STEP 1: Buat Resource Group
+## ⚠️ PENTING: Pelajaran dari Proses Deploy
+Akun **Azure for Students** memiliki kebijakan pembatasan region yang ketat. 
+- **JANGAN** memaksa menggunakan `West US` atau `Indonesia Central` jika ditolak oleh kebijakan.
+- **Gunakan `Japan East`** (atau region lain yang tersedia di dropdown Azure Portal). Region ini diizinkan, stabil, dan latensinya ke Supabase (`ap-southeast-1`) sangat baik (~50ms).
+- **Cloud Build (`az acr build`) sering diblokir** oleh kebijakan pelajar. Kita akan menggunakan **Local Build & Push** yang 100% lebih andal.
 
-1. Buka **Azure Portal**: https://portal.azure.com
-2. Klik **Resource groups** (atau search "Resource groups")
-3. Klik **+ Create**
-4. Isi form:
-   - **Subscription:** Azure for Students
+---
+
+##  ACTION PLAN UNTUK DEPLOYMENT PERTAMA
+
+###  FASE 1: Setup Azure Resources (10-15 menit)
+
+#### Step 1.1: Create Resource Group
+1. Buka https://portal.azure.com
+2. Search **"Resource groups"** → **+ Create**
+3. Settings:
    - **Resource group:** `harvesta-rg`
-   - **Region:** **West US** (paling stabil untuk student accounts)
-5. Klik **Review + create** → **Create**
+   - **Region:** **Japan East** *(Pilih ini, atau region lain yang tersedia di dropdown akunmu)*
+4. **Review + create** → **Create**
 
----
-
-## 🚀 STEP 2: Buat Container Registry (ACR)
-
-**Kenapa perlu ACR?** Docker image kita akan di-build dan disimpan di sini, lalu Azure Web App akan pull dari sini.
-
-1. Di Azure Portal, search **"Container registries"**
-2. Klik **+ Create**
-3. Isi form:
-   - **Subscription:** Azure for Students
+#### Step 1.2: Create Container Registry (ACR)
+1. Search **"Container registries"** → **+ Create**
+2. Settings:
+   - **Registry name:** `harvestaacr2` *(Harus unik global. Jika error, coba `harvestaitsacr`)*
    - **Resource group:** `harvesta-rg`
-   - **Registry name:** `harvestaacr` (harus unique, lowercase, no dash)
-   - **Location:** **West US**
-   - **SKU:** **Basic** (cukup untuk production, ~$5/bulan)
-4. Klik **Review + create** → **Create**
-5. Tunggu deployment selesai (~1-2 menit)
-
-### Enable Admin Access
-
-6. Setelah selesai, klik **Go to resource**
-7. Menu kiri → **Settings** → **Access keys**
-8. **Enable** toggle "Admin user"
-9. 📋 **CATAT** (akan dipakai nanti):
-   - **Login server:** `harvestaacr.azurecr.io`
-   - **Username:** `harvestaacr`
-   - **Password:** (copy salah satu password)
+   - **Location:** **Japan East** *(WAJIB sama dengan Resource Group)*
+   - **SKU:** **Basic**
+3. **Review + create** → **Create**
+4. Setelah selesai, klik **Go to resource**.
+5. Menu kiri: **Settings** → **Access keys**
+6. ✅ **Enable** toggle "Admin user" → **Save**
+7. 📋 **CATAT** `Username` dan salah satu `password`.
 
 ---
 
-## 🚀 STEP 3: Build Docker Image di ACR (Cloud Build)
+### 📍 FASE 2: Build & Push Docker Image (10-15 menit)
 
-**Ini akan build image di cloud tanpa perlu build lokal!**
+*Kita menggunakan Local Build karena lebih stabil untuk akun pelajar.*
 
-Jalankan di terminal lokal:
+Buka terminal di laptop, pastikan berada di folder root proyek (`harvesta`):
 
-```bash
-cd /home/hilmyfausta/kuliah/semester_3/pemrograman_web/ets_webpro/harvesta
+# 1. Login ke ACR (paste password dari Step 1.2)
+az acr login --name harvestaacr2
 
-# Login ke ACR (gunakan password dari Step 2)
-az acr login --name harvestaacr
+# 2. Build image secara lokal dan beri tag sesuai ACR
+docker build -t harvestaacr2.azurecr.io/harvesta:latest .
 
-# Build image di cloud (akan upload code dan build di Azure)
-az acr build --registry harvestaacr --image harvesta:latest --image harvesta:v1.0.0 .
-```
+# 3. Push image ke Azure Container Registry
+docker push harvestaacr2.azurecr.io/harvesta:latest
 
-**Output yang diharapkan:**
-```
-Packing source code into tar to upload...
-Uploading archived source code from '/tmp/...'
-...
-Run ID: ca1 was successful after 5m30s
-```
-
-**Waktu estimasi:** 5-10 menit (tergantung internet upload speed)
-
-**Jika ada error "Authorization failed":** Kita bisa skip CLI dan upload via ZIP di portal:
-1. ACR → **Tasks** → **Quick Task**
-2. Upload Dockerfile + source code sebagai ZIP
-3. Start build
+*Tunggu hingga proses push selesai (muncul digest: sha256:...).*
 
 ---
 
-## 🚀 STEP 4: Buat App Service Plan (B1)
+### 📍 FASE 3: Create App Service (5-10 menit)
 
-1. Di Azure Portal, search **"App Service plans"**
-2. Klik **+ Create**
-3. Isi form:
-   - **Subscription:** Azure for Students
-   - **Resource group:** `harvesta-rg`
+#### Step 3.1: Create App Service Plan
+1. Search **"App Service plans"** → **+ Create**
+2. Settings:
    - **Name:** `harvesta-plan`
-   - **Operating System:** **Linux**
-   - **Region:** **West US**
-   - **Pricing tier:** Klik **Explore pricing plans** → pilih **Basic B1** (1 core, 1.75 GB RAM, ~$13/month)
-4. Klik **Review + create** → **Create**
-
----
-
-## 🚀 STEP 5: Buat Web App (Container)
-
-1. Di Azure Portal, search **"App Services"**
-2. Klik **+ Create** → **Web App**
-3. Tab **Basics:**
-   - **Subscription:** Azure for Students
    - **Resource group:** `harvesta-rg`
-   - **Name:** `harvesta-its` (atau nama unik lain, akan jadi URL: `https://harvesta-its.azurewebsites.net`)
+   - **Operating System:** **Linux**
+   - **Region:** **Japan East** *(WAJIB sama)*
+   - **Pricing plan:** **Basic B1** (1.75 GB RAM)
+3. **Review + create** → **Create**
+
+#### Step 3.2: Create Web App
+1. Search **"App Services"** → **+ Create** → **Web App**
+2. **Tab Basics:**
+   - **Name:** `harvesta-its` *(Azure mungkin menambahkan suffix unik, itu normal)*
    - **Publish:** **Container**
    - **Operating System:** **Linux**
-   - **Region:** **West US**
-   - **Linux Plan:** `harvesta-plan` (yang baru dibuat di Step 4)
-
-4. Tab **Container:**
+   - **Region:** **Japan East**
+   - **Linux Plan:** `harvesta-plan`
+3. **Tab Container:**
    - **Image Source:** **Azure Container Registry**
-   - **Registry:** `harvestaacr`
+   - **Registry:** `harvestaacr2`
+   - **Authentication:** **Admin credentials**
    - **Image:** `harvesta`
    - **Tag:** `latest`
-   - **Startup Command:** (kosongkan)
-
-5. Tab **Monitoring:**
-   - **Enable Application Insights:** **No** (hemat biaya)
-
-6. Klik **Review + create** → **Create**
-7. Tunggu deployment (~2-3 menit)
+   - **Port:** **8080** *(Sangat Penting!)*
+   - **Startup Command:** *(Kosongkan)*
+4. **Tab Monitoring:** Enable Application Insights: **No**
+5. **Review + create** → **Create**
 
 ---
 
-## 🚀 STEP 6: Configure Environment Variables
+### 📍 FASE 4: Configure Environment Variables (5 menit)
 
-Ini bagian PENTING! Tanpa ini aplikasi tidak akan jalan.
+1. Di Web App → Menu kiri: **Settings** → **Environment variables**
+2. Klik tab **App settings** → **Advanced edit**
+3. **Hapus** isi yang ada, lalu **Paste** JSON berikut:
 
-1. Setelah Web App dibuat, klik **Go to resource**
-2. Menu kiri → **Settings** → **Environment variables**
-3. Klik **+ Add** untuk setiap variable berikut (atau gunakan **Advanced edit** untuk paste JSON)
-
-### Option A: Add Satu-satu
-
-Klik **+ Add** untuk setiap variable:
-
-| Name | Value |
-|------|-------|
-| `WEBSITES_PORT` | `8080` |
-| `WEBSITES_CONTAINER_START_TIME_LIMIT` | `600` |
-| `APP_NAME` | `Harvesta` |
-| `APP_ENV` | `production` |
-| `APP_DEBUG` | `false` |
-| `APP_KEY` | `base64:6l6p6p8YUj7oLOjLBByFeiyHYrXtkWj/pzuFdU8M6uE=` |
-| `APP_TIMEZONE` | `Asia/Jakarta` |
-| `APP_LOCALE` | `en` |
-| `APP_FALLBACK_LOCALE` | `en` |
-| `LOG_CHANNEL` | `stderr` |
-| `LOG_LEVEL` | `warning` |
-| `PHP_CLI_SERVER_WORKERS` | `4` |
-| `DB_CONNECTION` | `pgsql` |
-| `DB_HOST` | `aws-0-ap-southeast-1.pooler.supabase.com` |
-| `DB_PORT` | `5432` |
-| `DB_DATABASE` | `postgres` |
-| `DB_USERNAME` | `postgres.sbwgznlzluoyvguopzqu` |
-| `DB_PASSWORD` | `FG8P0A3tu0gMAKO2` |
-| `DB_SSLMODE` | `require` |
-| `SESSION_DRIVER` | `database` |
-| `CACHE_STORE` | `database` |
-| `QUEUE_CONNECTION` | `sync` |
-| `MAIL_MAILER` | `log` |
-| `PHOTO_DISK` | `s3` |
-| `PHOTO_DISK_ROOT` | `photos` |
-| `PHOTO_DISK_URL` | `https://sbwgznlzluoyvguopzqu.supabase.co/storage/v1/object/public/harvesta-photos` |
-| `PHOTO_S3_ENDPOINT` | `https://sbwgznlzluoyvguopzqu.storage.supabase.co/storage/v1/s3` |
-| `PHOTO_S3_REGION` | `ap-southeast-1` |
-| `PHOTO_S3_BUCKET` | `harvesta-photos` |
-| `PHOTO_S3_ACCESS_KEY_ID` | `1edb28d92c2be89b5b18baeb89611067` |
-| `PHOTO_S3_SECRET_ACCESS_KEY` | `2042ecf8a874a4ad8edb48214f306405bfaf01d22dbca7eafb52e597595f58bd` |
-| `PHOTO_S3_USE_PATH_STYLE_ENDPOINT` | `true` |
-| `SEED_ADMIN_EMAIL` | `admin@example.com` |
-| `SEED_ADMIN_PASSWORD` | `Hilmy080700!` |
-| `SEED_STAFF_EMAIL` | `staff@example.com` |
-| `SEED_STAFF_PASSWORD` | `Hilmy080700!` |
-| `SEED_VIEWER_EMAIL` | `viewer@example.com` |
-| `SEED_VIEWER_PASSWORD` | `password` |
-| `SEED_DEMO_DATA` | `true` |
-
-### Option B: Advanced Edit (Lebih Cepat)
-
-Klik **Advanced edit**, paste JSON ini (ganti nilai yang sudah ada):
-
-```json
 [
   { "name": "WEBSITES_PORT", "value": "8080", "slotSetting": false },
-  { "name": "WEBSITES_CONTAINER_START_TIME_LIMIT", "value": "600", "slotSetting": false },
+  { "name": "WEBSITES_CONTAINER_START_TIME_LIMIT", "value": "1800", "slotSetting": false },
   { "name": "APP_NAME", "value": "Harvesta", "slotSetting": false },
   { "name": "APP_ENV", "value": "production", "slotSetting": false },
   { "name": "APP_DEBUG", "value": "false", "slotSetting": false },
@@ -256,160 +141,81 @@ Klik **Advanced edit**, paste JSON ini (ganti nilai yang sudah ada):
   { "name": "SEED_VIEWER_PASSWORD", "value": "password", "slotSetting": false },
   { "name": "SEED_DEMO_DATA", "value": "true", "slotSetting": false }
 ]
-```
 
-4. Klik **OK** → **Apply** → **Confirm**
-5. Web App akan restart otomatis
+4. Klik **OK** → **Apply** → **Confirm**.
 
 ---
 
-## 🚀 STEP 7: Enable Logging & Monitor Deployment
+### 📍 FASE 5: Monitor & Verify (5-10 menit)
 
-1. Menu kiri → **Monitoring** → **App Service logs**
-2. **Application Logging:** File System
-3. **Retention Period:** 1 days
-4. Klik **Save**
-
-5. Menu kiri → **Monitoring** → **Log stream**
-6. Tunggu dan monitor logs:
-
-**Logs yang diharapkan (first boot ~3-5 menit):**
-```
-Pulling image: harvestaacr.azurecr.io/harvesta:latest
-Successfully pulled image
-Starting container...
-Running migrations...
-Seeding database...
-Server running on [http://0.0.0.0:8080]
-```
-
-**Jika ada error:**
-- `APP_KEY is not set` → Periksa environment variables
-- `Connection refused` database → Periksa Supabase credentials
-- `Port 8080 not responding` → Tunggu lebih lama (cold start pertama bisa 5-10 menit)
+1. Menu kiri: **Monitoring** → **App Service logs**
+   - Set **Application Logging:** `File System`
+   - Set **Container logging:** `On` *(Wajib!)*
+   - Klik **Save**
+2. Klik **Log stream** (di bawah App Service logs). Biarkan terbuka.
+3. Kembali ke **Overview** → Klik **Restart**.
+4. **Tunggu di Log stream** sampai muncul baris:  
+   `INFO Server running on [http://0.0.0.0:8080]`
+5. Setelah itu, buka URL aplikasimu di **Incognito Mode**.
+6. Login: `admin@example.com` / `Hilmy080700!`
 
 ---
 
-## 🚀 STEP 8: Test Aplikasi
+## 🆘 TROUBLESHOOTING KHUSUS (BERDASARKAN PENGALAMAN NYATA)
 
-1. Klik **Overview** di menu kiri
-2. Copy **Default domain:** `https://harvesta-its.azurewebsites.net`
-3. Buka di browser baru
+### ❌ Error: "Undefined table: relation 'users' does not exist" saat Seeding
+**Penyebab:** Tabel `migrations` di Supabase masih menyimpan catatan lama, sehingga Laravel melewatkan proses pembuatan tabel (`Nothing to migrate`), tapi tabel aslinya sudah terhapus, menyebabkan seeding crash.
 
-**Jika berhasil:**
-- Redirect ke `/login`
-- Login dengan:
-  - **Admin:** `admin@example.com` / `Hilmy080700!`
-  - **Staff:** `staff@example.com` / `Hilmy080700!`
-  - **Viewer:** `viewer@example.com` / `password`
+**Solusi Pasti:**
+1. Buka **Supabase Dashboard** → **SQL Editor**.
+2. Jalankan query ini untuk mereset total:
 
-### Checklist Verifikasi:
+DROP TABLE IF EXISTS migrations CASCADE;
+DROP TABLE IF EXISTS users CASCADE;
+DROP TABLE IF EXISTS trees CASCADE;
+-- (tambahkan tabel lain seperti care_logs, harvests, dll jika perlu)
 
-- [ ] Dashboard muncul dengan statistik
-- [ ] Trees page menampilkan 40 pohon dengan foto
-- [ ] Upload foto baru berhasil
-- [ ] Foto tersimpan di Supabase Storage (cek bucket)
-- [ ] Role-based access bekerja (staff tidak lihat Finance, viewer tidak lihat tombol edit)
+3. Kembali ke Azure Portal → **Overview** → **Restart** Web App.
+4. Laravel akan dipaksa membuat ulang semua tabel dan seeding dari awal dengan benar.
 
----
-
-## 🎯 Estimasi Biaya
-
-**Per Bulan:**
-- **Basic B1 App Service Plan:** ~$13.14
-- **ACR Basic:** ~$5.00
-- **Supabase:** $0 (free tier)
-- **Total:** ~$18.14/bulan
-
-**Dengan kredit $70:** Bisa jalan 3-4 bulan.
-
-**Tips hemat:**
-- Setelah demo/presentasi, bisa downgrade ke **Free F1** (save $13/bulan)
-- Atau stop/delete resources sementara, deploy ulang saat butuh
+### ❌ Web Stuck Loading / 503 Service Unavailable
+**Penyebab:** Proses seeding (terutama upload foto) memakan waktu lebih dari batas default Azure (230 detik), sehingga Azure mematikan container sebelum web server sempat menyala.
+**Solusi:** Pastikan `WEBSITES_CONTAINER_START_TIME_LIMIT` di Environment Variables sudah diset ke **`1800`**.
 
 ---
 
-## 🆘 Troubleshooting
+## 🔄 CARA UPDATE DEPLOYMENT (SETELAH ADA PERUBAHAN KODE)
 
-### Container tidak start / terus restart
+Setiap kali kamu melakukan `git push` perubahan kode baru, ikuti 3 langkah ini di terminal laptop:
 
-**Cek logs:**
-1. Log stream → lihat error message
-2. Common issues:
-   - APP_KEY tidak diset → tambahkan di environment variables
-   - Database connection failed → cek Supabase masih aktif (tidak paused)
-   - Port binding error → pastikan WEBSITES_PORT = 8080
+# 1. Pastikan kode terbaru sudah di-pull
+git pull origin main
 
-### UI tidak muncul / hanya index.html
+# 2. Build ulang image dengan tag yang sama (akan menimpa yang lama)
+docker build -t harvestaacr2.azurecr.io/harvesta:latest .
 
-**Ini tidak akan terjadi dengan Docker setup kita** karena:
-- Vite assets sudah di-build di Dockerfile stage 2
-- Public folder sudah include semua assets
+# 3. Push ke Azure
+docker push harvestaacr2.azurecr.io/harvesta:latest
 
-Jika terjadi:
-1. Cek logs untuk errors
-2. Test URL: `https://harvesta-its.azurewebsites.net/up` (health check)
-
-### Foto tidak muncul
-
-1. Cek Supabase bucket `harvesta-photos` adalah **public**
-2. Test direct URL: `https://sbwgznlzluoyvguopzqu.supabase.co/storage/v1/object/public/harvesta-photos/photos/trees/t-0001.jpg`
-3. Verifikasi PHOTO_S3_* credentials benar
-
-### App sangat lambat
-
-Basic B1 seharusnya cukup cepat. Jika lambat:
-1. Cek CPU/Memory usage di **Metrics**
-2. Cold start pertama memang lambat (5-10 detik)
-3. Consider upgrade ke **Standard S1** jika perlu ($70/month - terlalu mahal)
-
----
-
-## 🔄 Update Deployment
-
-Jika ada perubahan code:
-
-### Via ACR Cloud Build:
-```bash
-cd /home/hilmyfausta/kuliah/semester_3/pemrograman_web/ets_webpro/harvesta
-
-# Build image baru di ACR
-az acr build --registry harvestaacr --image harvesta:latest --image harvesta:v1.0.1 .
-
-# Restart Web App untuk pull image baru
+# 4. Restart Web App agar menarik image terbaru
 az webapp restart --name harvesta-its --resource-group harvesta-rg
-```
 
-### Via Azure Portal:
-1. Web App → **Deployment Center** → **Redeploy**
-2. Atau: **Overview** → **Restart**
+*Catatan: Script `docker/start.sh` sudah dikonfigurasi untuk otomatis menjalankan `php artisan migrate --force` setiap kali restart, jadi perubahan database akan aman.*
 
 ---
 
-## ✅ Deployment Selesai!
-
-**URL Production:** `https://harvesta-its.azurewebsites.net`
-
-**Credentials untuk Demo:**
-```
-Admin (full access):
-- Email: admin@example.com
-- Password: Hilmy080700!
-
-Staff (field operations):
-- Email: staff@example.com  
-- Password: Hilmy080700!
-
-Viewer (read-only untuk dosen/penilai):
-- Email: viewer@example.com
-- Password: password
-```
-
-**Dokumentasi:**
-- PRD lengkap: `PRD.md`
-- Deployment guide: `docs/DEPLOY.md`
-- This guide: `AZURE_DEPLOY_GUIDE.md`
+## 💡 REKOMENDASI JANGKA PANJANG: CI/CD OTOMATIS
+Agar tidak perlu menjalankan perintah di atas secara manual, kamu bisa mengaktifkan **GitHub Actions**. 
+1. Buat file `.github/workflows/deploy.yml` di repository.
+2. Simpan password ACR di **GitHub Repository Secrets** dengan nama `ACR_PASSWORD`.
+3. Setiap kali `git push`, GitHub akan otomatis build, push ke ACR, dan restart Azure dalam 3-5 menit.
 
 ---
 
-**Good luck dengan deployment! 🚀**
+## 💰 COST MANAGEMENT
+- **Total:** ~$18/bulan (ACR Basic $5 + App Service B1 $13).
+- **Hemat Biaya:** Setelah presentasi, kamu bisa **Stop** Web App via Azure Portal (hemat $13/bulan, data tetap aman di Supabase & ACR). Nyalakan kembali (`Start`) hanya saat butuh demo.
+
+---
+
+**🚀 Selamat! Dokumentasi ini sekarang 100% akurat dan sudah terverifikasi berhasil.**
