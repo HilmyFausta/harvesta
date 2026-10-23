@@ -5,9 +5,6 @@ package: .
 
 description: "Tree & Orchard Management System - Laravel 13 + Livewire 4"
 
-# Enable debug mode for better error messages during development
-debug: true
-
 # Environment variables (secrets should be set via CLI: wasmer app secrets create)
 env:
   APP_NAME: "Harvesta"
@@ -55,7 +52,7 @@ env:
 # Scaling configuration
 # Laravel can handle multiple concurrent requests
 scaling:
-  mode: default
+  mode: single_concurrency
 
 # Deploy to France region (supports PostgreSQL)
 # fr-roub1 (France) or ca-beau1 (Canada) - both support PostgreSQL
