@@ -5,14 +5,14 @@ description = "Harvesta - Tree & Orchard Management System"
 readme = "README.md"
 
 [dependencies]
-"php/php" = "=8.3.4"
+"wasmer/php" = "=8.3.4"
 
 [fs]
 "/app" = "."
 
 [[command]]
 name = "run"
-module = "php/php:php"
+module = "wasmer/php:php"
 runner = "wasi"
 
 [command.annotations.wasi]
