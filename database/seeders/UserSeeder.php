@@ -10,12 +10,13 @@ use RuntimeException;
 class UserSeeder extends Seeder
 {
     /**
-     * Seed the default admin and staff accounts.
+     * Seed the default admin, staff, and viewer accounts.
      */
     public function run(): void
     {
         $this->seedAccount('admin', UserRole::Admin);
         $this->seedAccount('staff', UserRole::Staff);
+        $this->seedAccount('viewer', UserRole::Viewer);
     }
 
     /**

@@ -83,6 +83,14 @@ class User extends Authenticatable
     }
 
     /**
+     * Determine whether the user is a viewer (read-only).
+     */
+    public function isViewer(): bool
+    {
+        return $this->role === UserRole::Viewer;
+    }
+
+    /**
      * Determine whether the user is the only remaining admin.
      */
     public function isLastAdmin(): bool

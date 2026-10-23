@@ -24,6 +24,12 @@ return [
         'password' => env('SEED_STAFF_PASSWORD'),
     ],
 
+    'viewer' => [
+        'name' => env('SEED_VIEWER_NAME', 'Guest Viewer'),
+        'email' => env('SEED_VIEWER_EMAIL', 'viewer@example.com'),
+        'password' => env('SEED_VIEWER_PASSWORD'),
+    ],
+
     /*
     |--------------------------------------------------------------------------
     | Demo Data

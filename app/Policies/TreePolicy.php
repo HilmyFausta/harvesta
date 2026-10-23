@@ -6,7 +6,8 @@ use App\Models\Tree;
 use App\Models\User;
 
 /**
- * Staff can create, view, and edit trees; only admins can delete (PRD F-05).
+ * Staff can create, view, and edit trees; only admins can delete.
+ * Viewer can only view (PRD F-05).
  */
 class TreePolicy
 {
@@ -22,12 +23,12 @@ class TreePolicy
 
     public function create(User $user): bool
     {
-        return true;
+        return ! $user->isViewer();
     }
 
     public function update(User $user, Tree $tree): bool
     {
-        return true;
+        return ! $user->isViewer();
     }
 
     public function delete(User $user, Tree $tree): bool

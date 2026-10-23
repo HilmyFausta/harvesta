@@ -1,0 +1,80 @@
+kind: wasmer.io/App.v0
+name: harvesta
+owner: hilmyfausta
+package: .
+
+description: "Tree & Orchard Management System - Laravel 13 + Livewire 4"
+
+# Enable debug mode for better error messages during development
+debug: true
+
+# Environment variables (secrets should be set via CLI: wasmer app secrets create)
+env:
+  APP_NAME: "Harvesta"
+  APP_ENV: "production"
+  APP_DEBUG: "false"
+  APP_TIMEZONE: "Asia/Jakarta"
+  APP_LOCALE: "en"
+  APP_FALLBACK_LOCALE: "en"
+  
+  # Logging
+  LOG_CHANNEL: "stderr"
+  LOG_LEVEL: "warning"
+  
+  # Session & Cache
+  SESSION_DRIVER: "database"
+  CACHE_STORE: "database"
+  QUEUE_CONNECTION: "sync"
+  
+  # Mail (using log driver)
+  MAIL_MAILER: "log"
+  
+  # Database connection - Supabase PostgreSQL
+  # Set via secrets: APP_KEY, DB_HOST, DB_PORT, DB_DATABASE, DB_USERNAME, DB_PASSWORD
+  DB_CONNECTION: "pgsql"
+  DB_SSLMODE: "require"
+  
+  # Photo storage - Supabase S3
+  # Set via secrets: PHOTO_S3_ACCESS_KEY_ID, PHOTO_S3_SECRET_ACCESS_KEY,
+  #                  PHOTO_S3_ENDPOINT, PHOTO_S3_REGION, PHOTO_DISK_URL
+  PHOTO_DISK: "s3"
+  PHOTO_DISK_ROOT: "photos"
+  PHOTO_S3_BUCKET: "harvesta-photos"
+  PHOTO_S3_USE_PATH_STYLE_ENDPOINT: "true"
+  
+  # Seeder configuration (3 accounts: admin, staff, viewer)
+  # Set via secrets: SEED_ADMIN_PASSWORD, SEED_STAFF_PASSWORD, SEED_VIEWER_PASSWORD
+  SEED_ADMIN_NAME: "Admin"
+  SEED_ADMIN_EMAIL: "admin@example.com"
+  SEED_STAFF_NAME: "Field Staff"
+  SEED_STAFF_EMAIL: "staff@example.com"
+  SEED_VIEWER_NAME: "Guest Viewer"
+  SEED_VIEWER_EMAIL: "viewer@example.com"
+  SEED_DEMO_DATA: "true"
+
+# Scaling configuration
+# Laravel can handle multiple concurrent requests
+scaling:
+  mode: default
+
+# Deploy to France region (supports PostgreSQL)
+# fr-roub1 (France) or ca-beau1 (Canada) - both support PostgreSQL
+locality:
+  regions:
+    - fr-roub1
+
+# Health checks
+health_checks:
+  - http:
+      method: GET
+      path: /up
+      interval: 60s
+      timeout: 10s
+      unhealthy_threshold: 3
+      healthy_threshold: 2
+      expected_status_codes:
+        - 200
+
+# Redirect HTTP to HTTPS
+redirect:
+  force_https: true
