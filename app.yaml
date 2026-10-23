@@ -13,6 +13,7 @@ env:
   APP_TIMEZONE: "Asia/Jakarta"
   APP_LOCALE: "en"
   APP_FALLBACK_LOCALE: "en"
+  APP_URL: "https://harvesta.wasmer.app"
   
   # Logging
   LOG_CHANNEL: "stderr"
@@ -20,10 +21,11 @@ env:
   
   # Session & Cache
   SESSION_DRIVER: "database"
+  SESSION_LIFETIME: "120"
   CACHE_STORE: "database"
   QUEUE_CONNECTION: "sync"
   
-  # Mail (using log driver)
+  # Mail
   MAIL_MAILER: "log"
   
   # Database connection - Supabase PostgreSQL
@@ -48,30 +50,15 @@ env:
   SEED_VIEWER_NAME: "Guest Viewer"
   SEED_VIEWER_EMAIL: "viewer@example.com"
   SEED_DEMO_DATA: "true"
-
-# Scaling configuration
-# Laravel can handle multiple concurrent requests
-scaling:
-  mode: single_concurrency
-
+  
 # Deploy to France region (supports PostgreSQL)
 # fr-roub1 (France) or ca-beau1 (Canada) - both support PostgreSQL
 locality:
   regions:
     - fr-roub1
 
-# Health checks
-health_checks:
-  - http:
-      method: GET
-      path: /up
-      interval: 60s
-      timeout: 10s
-      unhealthy_threshold: 3
-      healthy_threshold: 2
-      expected_status_codes:
-        - 200
-
 # Redirect HTTP to HTTPS
 redirect:
   force_https: true
+
+app_id: da_nBBIbtXUDy0O

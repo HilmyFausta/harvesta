@@ -260,41 +260,47 @@ wasmer deploy
 
 📋 Simpan URL ini untuk akses aplikasi.
 
-### D3. Jalankan Migrasi Database (Pertama Kali)
+### D3. Migrasi Database Otomatis
 
-⚠️ **Wasmer tidak menjalankan migrasi otomatis**, jadi kita harus trigger manual.
+✅ **Aplikasi sudah dikonfigurasi untuk auto-migrate pada first boot!**
 
-**Cara 1: SSH ke container (recommended):**
-```bash
-wasmer ssh harvesta
-# Di dalam container:
-cd /app
-php artisan migrate --force
-php artisan db:seed --force
-exit
-```
+File `bootstrap/wasmer-init.php` akan otomatis:
+1. Cek apakah database sudah di-setup (cek tabel `migrations`)
+2. Jika belum, run `php artisan migrate --force`
+3. Lalu run `php artisan db:seed --force`
+4. Script ini dijalankan setiap kali app start, tapi hanya migrate/seed sekali
 
-**Cara 2: Buat script helper (jika SSH tidak tersedia):**
+**Jadi kamu tidak perlu SSH atau manual trigger!** 🎉
 
-Buat file `routes/web.php` tambahan route admin untuk trigger seeder (hanya sekali):
+### D4. Backup: Manual Trigger (jika auto-init gagal)
 
-```php
-// TEMPORARY - hapus setelah selesai!
-Route::get('/admin-setup-db', function () {
-    if (app()->environment('production') && request()->ip() !== 'YOUR_IP') {
-        abort(403);
-    }
-    
-    \Artisan::call('migrate', ['--force' => true]);
-    \Artisan::call('db:seed', ['--force' => true]);
-    
-    return 'Database setup complete!';
-})->middleware('throttle:1,60'); // max 1 request per jam
-```
+Jika karena alasan tertentu auto-init tidak jalan, kamu bisa trigger manual lewat web:
 
-Akses: `https://harvesta-<username>.wasmer.app/admin-setup-db`
+**Langkah:**
 
-⚠️ **HAPUS route ini segera setelah setup selesai!**
+1. **Extract 16 karakter dari APP_KEY kamu:**
+   ```bash
+   # Misal APP_KEY = base64:abcdefgh12345678XYZABC123...
+   # Ambil karakter ke-8 sampai ke-23 (16 karakter)
+   # Contoh: abcdefgh1234567
+   ```
+
+2. **Akses URL setup:**
+   ```
+   https://harvesta-<username>.wasmer.app/setup-db?key=<16-char-dari-app-key>
+   ```
+
+3. **Output akan menampilkan:**
+   - Migration results
+   - Seeder results
+   - Config cache status
+
+4. **PENTING:** Route ini protected dengan:
+   - ✅ Throttle: max 3 requests per jam
+   - ✅ Key validation: harus pakai extract APP_KEY
+   - ✅ Only works in production
+
+⚠️ **Setelah berhasil setup, HAPUS route ini** dari `routes/web.php` (cari `Route::get('/setup-db'`) dan deploy ulang untuk keamanan.
 
 ---
 

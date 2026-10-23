@@ -1,0 +1,41 @@
+# Abaikan folder node_modules (tidak dipakai di runtime)
+node_modules/
+
+# JANGAN ignore vendor/ - Wasmer butuh ini untuk Laravel!
+# vendor/
+
+# Abaikan file environment dan git
+.env
+.env.local
+.git/
+.gitignore
+.github/
+
+# Abaikan file storage yang tidak perlu (bisa sangat besar)
+storage/logs/
+storage/framework/cache/
+storage/framework/sessions/
+storage/framework/views/
+storage/app/public/photos/
+
+# Abaikan folder development/testing
+tests/
+.phpunit.result.cache
+.idea/
+.vscode/
+
+# Abaikan file dokumentasi & config development
+docs/
+*.md
+AGENTS.md
+CLAUDE.md
+PRD.md
+MEMBER_*.md
+*.neon
+phpunit.xml
+pint.json
+.editorconfig
+.dockerignore
+Dockerfile
+docker/
+render.yaml
