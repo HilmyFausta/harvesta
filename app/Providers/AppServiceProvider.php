@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Models\User;
 use Carbon\CarbonImmutable;
+use Closure;
 use Illuminate\Support\Facades\Date;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
@@ -48,14 +49,14 @@ class AppServiceProvider extends ServiceProvider
             app()->isProduction(),
         );
 
-        Password::defaults(fn (): ?Password => app()->isProduction()
-            ? Password::min(12)
-                ->mixedCase()
-                ->letters()
-                ->numbers()
-                ->symbols()
-                ->uncompromised()
-            : null,
+        // Keep in sync with the checklist in <x-password-requirements>.
+        Password::defaults(fn (): Password => Password::min(8)
+            ->numbers()
+            ->rules([function (string $attribute, mixed $value, Closure $fail): void {
+                if (! preg_match('/\p{Lu}/u', (string) $value)) {
+                    $fail(__('The :attribute field must contain at least one uppercase letter.'));
+                }
+            }]),
         );
     }
 }

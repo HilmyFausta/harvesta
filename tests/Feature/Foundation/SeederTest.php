@@ -96,7 +96,7 @@ class SeederTest extends TestCase
         $this->seed(DatabaseSeeder::class);
         $this->seed(DatabaseSeeder::class);
 
-        $this->assertSame(2, User::count());
+        $this->assertSame(3, User::count());
         $this->assertSame(4, Category::count());
         $this->assertSame(40, Tree::count());
     }

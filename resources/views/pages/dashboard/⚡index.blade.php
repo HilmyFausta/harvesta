@@ -146,7 +146,7 @@ new #[Title('Dashboard')] class extends Component
     </x-page-header>
 
     <div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <div class="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
+        <div class="min-w-0 rounded-xl border border-zinc-200 bg-white p-4 sm:p-5 dark:border-zinc-700 dark:bg-zinc-900">
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <flux:text>{{ __('Total trees') }}</flux:text>
@@ -165,7 +165,7 @@ new #[Title('Dashboard')] class extends Component
             </div>
         </div>
 
-        <div class="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
+        <div class="min-w-0 rounded-xl border border-zinc-200 bg-white p-4 sm:p-5 dark:border-zinc-700 dark:bg-zinc-900">
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <flux:text>{{ __('Blocks') }}</flux:text>
@@ -179,7 +179,7 @@ new #[Title('Dashboard')] class extends Component
             </div>
         </div>
 
-        <div class="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
+        <div class="min-w-0 rounded-xl border border-zinc-200 bg-white p-4 sm:p-5 dark:border-zinc-700 dark:bg-zinc-900">
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <flux:text>{{ __('Harvest this month') }}</flux:text>
@@ -193,7 +193,7 @@ new #[Title('Dashboard')] class extends Component
             </div>
         </div>
 
-        <div class="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
+        <div class="min-w-0 rounded-xl border border-zinc-200 bg-white p-4 sm:p-5 dark:border-zinc-700 dark:bg-zinc-900">
             <div class="flex items-start justify-between gap-3">
                 <div>
                     <flux:text>{{ __('Upcoming care') }}</flux:text>
@@ -210,19 +210,19 @@ new #[Title('Dashboard')] class extends Component
 
     @if ($finance)
         <div class="grid gap-4 sm:grid-cols-3">
-            <div class="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
+            <div class="min-w-0 rounded-xl border border-zinc-200 bg-white p-4 sm:p-5 dark:border-zinc-700 dark:bg-zinc-900">
                 <flux:text>{{ __('Sales this month') }}</flux:text>
-                <p class="mt-2 text-2xl font-semibold text-emerald-600 dark:text-emerald-400">{{ Format::money($finance['sales']) }}</p>
+                <p class="mt-2 text-xl font-semibold break-words sm:text-2xl text-emerald-600 dark:text-emerald-400">{{ Format::money($finance['sales']) }}</p>
             </div>
 
-            <div class="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
+            <div class="min-w-0 rounded-xl border border-zinc-200 bg-white p-4 sm:p-5 dark:border-zinc-700 dark:bg-zinc-900">
                 <flux:text>{{ __('Expenses this month') }}</flux:text>
-                <p class="mt-2 text-2xl font-semibold text-red-600 dark:text-red-400">{{ Format::money($finance['expenses']) }}</p>
+                <p class="mt-2 text-xl font-semibold break-words sm:text-2xl text-red-600 dark:text-red-400">{{ Format::money($finance['expenses']) }}</p>
             </div>
 
-            <div class="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
+            <div class="min-w-0 rounded-xl border border-zinc-200 bg-white p-4 sm:p-5 dark:border-zinc-700 dark:bg-zinc-900">
                 <flux:text>{{ __('Net this month') }}</flux:text>
-                <p class="mt-2 text-2xl font-semibold {{ $finance['net'] >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}">
+                <p class="mt-2 text-xl font-semibold break-words sm:text-2xl {{ $finance['net'] >= 0 ? 'text-emerald-600 dark:text-emerald-400' : 'text-red-600 dark:text-red-400' }}">
                     {{ Format::money($finance['net']) }}
                 </p>
             </div>
@@ -230,18 +230,20 @@ new #[Title('Dashboard')] class extends Component
     @endif
 
     <div class="grid gap-6 xl:grid-cols-3">
-        <div class="rounded-xl border border-zinc-200 bg-white p-6 xl:col-span-2 dark:border-zinc-700 dark:bg-zinc-900">
-            <div class="mb-4 flex items-center justify-between gap-3">
+        <div class="min-w-0 rounded-xl border border-zinc-200 bg-white p-4 sm:p-6 xl:col-span-2 dark:border-zinc-700 dark:bg-zinc-900">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                 <h2 class="text-lg font-semibold text-zinc-800 dark:text-white">{{ __('Harvest trend') }}</h2>
                 <flux:text>{{ __('Last 12 months') }}</flux:text>
             </div>
 
-            <div class="h-72">
-                <canvas id="harvest-chart" data-chart="{{ json_encode($harvestChart) }}" role="img" aria-label="{{ __('Harvest trend for the last 12 months') }}"></canvas>
+            <div class="-mx-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6">
+                <div class="relative h-72 min-w-xl">
+                    <canvas id="harvest-chart" data-chart="{{ json_encode($harvestChart) }}" role="img" aria-label="{{ __('Harvest trend for the last 12 months') }}"></canvas>
+                </div>
             </div>
         </div>
 
-        <div class="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
+        <div class="min-w-0 rounded-xl border border-zinc-200 bg-white p-4 sm:p-6 dark:border-zinc-700 dark:bg-zinc-900">
             <h2 class="mb-4 text-lg font-semibold text-zinc-800 dark:text-white">{{ __('Tree status') }}</h2>
 
             <div class="space-y-3">
@@ -258,14 +260,16 @@ new #[Title('Dashboard')] class extends Component
     </div>
 
     @if ($financeChart)
-        <div class="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
-            <div class="mb-4 flex items-center justify-between gap-3">
+        <div class="min-w-0 rounded-xl border border-zinc-200 bg-white p-4 sm:p-6 dark:border-zinc-700 dark:bg-zinc-900">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-x-3 gap-y-1">
                 <h2 class="text-lg font-semibold text-zinc-800 dark:text-white">{{ __('Sales and expenses') }}</h2>
                 <flux:text>{{ __('Last 12 months') }}</flux:text>
             </div>
 
-            <div class="h-72">
-                <canvas id="finance-chart" data-chart="{{ json_encode($financeChart) }}" role="img" aria-label="{{ __('Sales and expenses for the last 12 months') }}"></canvas>
+            <div class="-mx-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6">
+                <div class="relative h-72 min-w-xl">
+                    <canvas id="finance-chart" data-chart="{{ json_encode($financeChart) }}" role="img" aria-label="{{ __('Sales and expenses for the last 12 months') }}"></canvas>
+                </div>
             </div>
         </div>
     @endif
@@ -273,7 +277,7 @@ new #[Title('Dashboard')] class extends Component
     <div class="grid gap-6 xl:grid-cols-2">
         @include('pages.dashboard.partials.upcoming-care')
 
-        <div class="rounded-xl border border-zinc-200 bg-white p-6 dark:border-zinc-700 dark:bg-zinc-900">
+        <div class="min-w-0 rounded-xl border border-zinc-200 bg-white p-4 sm:p-6 dark:border-zinc-700 dark:bg-zinc-900">
             <div class="mb-4 flex items-center justify-between gap-3">
                 <h2 class="text-lg font-semibold text-zinc-800 dark:text-white">{{ __('Recent harvests') }}</h2>
 
@@ -287,22 +291,22 @@ new #[Title('Dashboard')] class extends Component
                     <p>{{ __('No harvests recorded yet.') }}</p>
                 </div>
             @else
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
+                <div class="-mx-4 overflow-x-auto px-4 sm:-mx-6 sm:px-6">
+                    <table class="w-full min-w-md text-sm whitespace-nowrap">
                         <thead class="border-b border-zinc-200 dark:border-zinc-700">
                             <tr>
-                                <th class="pb-2 text-left font-medium text-zinc-600 dark:text-zinc-400">{{ __('Date') }}</th>
-                                <th class="pb-2 text-left font-medium text-zinc-600 dark:text-zinc-400">{{ __('Tree') }}</th>
-                                <th class="pb-2 text-right font-medium text-zinc-600 dark:text-zinc-400">{{ __('Quantity') }}</th>
+                                <th class="pe-4 pb-2 text-left font-medium text-zinc-600 dark:text-zinc-400">{{ __('Date') }}</th>
+                                <th class="pe-4 pb-2 text-left font-medium text-zinc-600 dark:text-zinc-400">{{ __('Tree') }}</th>
+                                <th class="pe-4 pb-2 text-right font-medium text-zinc-600 dark:text-zinc-400">{{ __('Quantity') }}</th>
                                 <th class="pb-2 text-left font-medium text-zinc-600 dark:text-zinc-400">{{ __('Grade') }}</th>
                             </tr>
                         </thead>
                         <tbody class="divide-y divide-zinc-200 dark:divide-zinc-700">
                             @foreach ($recentHarvests as $harvest)
                                 <tr>
-                                    <td class="py-3 text-zinc-600 dark:text-zinc-400">{{ Format::date($harvest->harvested_on) }}</td>
-                                    <td class="py-3 font-medium text-zinc-800 dark:text-white">{{ $harvest->tree->code }}</td>
-                                    <td class="py-3 text-right text-zinc-600 dark:text-zinc-400">{{ Format::number($harvest->quantity) }} {{ $harvest->unit->label() }}</td>
+                                    <td class="py-3 pe-4 text-zinc-600 dark:text-zinc-400">{{ Format::date($harvest->harvested_on) }}</td>
+                                    <td class="py-3 pe-4 font-medium text-zinc-800 dark:text-white">{{ $harvest->tree->code }}</td>
+                                    <td class="py-3 pe-4 text-right text-zinc-600 dark:text-zinc-400">{{ Format::number($harvest->quantity) }} {{ $harvest->unit->label() }}</td>
                                     <td class="py-3">
                                         <flux:badge size="sm" color="zinc">{{ $harvest->grade->label() }}</flux:badge>
                                     </td>

@@ -62,6 +62,26 @@ class DashboardTest extends TestCase
             ->assertDontSee('Sales and expenses');
     }
 
+    public function test_upcoming_care_shows_whole_time_units_and_correct_status(): void
+    {
+        $this->travelTo(today()->setTime(15, 30));
+
+        $tree = Tree::factory()->create();
+
+        foreach ([-1, 0, 1, 3] as $days) {
+            CareLog::factory()->for($tree)->create(['next_due_on' => today()->addDays($days)]);
+        }
+
+        $this->actingAs(User::factory()->staff()->create())
+            ->get(route('dashboard'))
+            ->assertOk()
+            ->assertSee('Overdue')
+            ->assertSee('Due today')
+            ->assertSee('In 8 hours')
+            ->assertSee('In 2 days')
+            ->assertSee('favicons/dashboard.svg');
+    }
+
     public function test_admin_sees_financial_summary_and_report_link(): void
     {
         $harvest = Harvest::factory()->create([

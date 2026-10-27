@@ -14,12 +14,15 @@
         @endforeach
     </flux:select>
 
-    <flux:input
-        wire:model="password"
-        :label="$passwordRequired ? __('Password') : __('New password')"
-        type="password"
-        :required="$passwordRequired"
-        :description="$passwordRequired ? null : __('Leave blank to keep the current password.')"
-        autocomplete="new-password"
-    />
+    <x-password-requirements>
+        <flux:input
+            wire:model="password"
+            :label="$passwordRequired ? __('Password') : __('New password')"
+            type="password"
+            :required="$passwordRequired"
+            :description="$passwordRequired ? null : __('Leave blank to keep the current password.')"
+            autocomplete="new-password"
+            viewable
+        />
+    </x-password-requirements>
 </div>

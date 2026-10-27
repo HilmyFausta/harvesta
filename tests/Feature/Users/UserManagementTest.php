@@ -48,7 +48,7 @@ class UserManagementTest extends TestCase
             ->set('name', 'Field Worker')
             ->set('email', 'FIELD@example.com')
             ->set('role', UserRole::Staff->value)
-            ->set('password', 'password123')
+            ->set('password', 'Password123')
             ->call('save')
             ->assertHasNoErrors()
             ->assertRedirect(route('users.index'));
@@ -57,7 +57,7 @@ class UserManagementTest extends TestCase
 
         $this->assertSame('Field Worker', $user->name);
         $this->assertSame(UserRole::Staff, $user->role);
-        $this->assertTrue(Hash::check('password123', $user->password));
+        $this->assertTrue(Hash::check('Password123', $user->password));
     }
 
     public function test_admin_can_create_another_admin(): void
@@ -68,11 +68,44 @@ class UserManagementTest extends TestCase
             ->set('name', 'Second Admin')
             ->set('email', 'second-admin@example.com')
             ->set('role', UserRole::Admin->value)
-            ->set('password', 'password123')
+            ->set('password', 'Password123')
             ->call('save')
             ->assertHasNoErrors();
 
         $this->assertSame(UserRole::Admin, User::where('email', 'second-admin@example.com')->firstOrFail()->role);
+    }
+
+    public function test_password_needs_eight_characters_an_uppercase_letter_and_a_number(): void
+    {
+        $this->actingAs(User::factory()->admin()->create());
+
+        foreach (['Short1A', 'nouppercase1', 'NoNumberHere'] as $password) {
+            Livewire::test('pages::users.create')
+                ->set('name', 'Field Worker')
+                ->set('email', 'field@example.com')
+                ->set('role', UserRole::Staff->value)
+                ->set('password', $password)
+                ->call('save')
+                ->assertHasErrors(['password']);
+        }
+
+        Livewire::test('pages::users.create')
+            ->set('name', 'Field Worker')
+            ->set('email', 'field@example.com')
+            ->set('role', UserRole::Staff->value)
+            ->set('password', 'nosymbols1A')
+            ->call('save')
+            ->assertHasNoErrors();
+    }
+
+    public function test_create_form_shows_the_password_checklist(): void
+    {
+        $this->actingAs(User::factory()->admin()->create())
+            ->get(route('users.create'))
+            ->assertOk()
+            ->assertSee('At least 8 characters')
+            ->assertSee('One uppercase letter')
+            ->assertSee('One number');
     }
 
     public function test_email_must_be_unique(): void
@@ -85,7 +118,7 @@ class UserManagementTest extends TestCase
             ->set('name', 'Duplicate Email')
             ->set('email', $existing->email)
             ->set('role', UserRole::Staff->value)
-            ->set('password', 'password123')
+            ->set('password', 'Password123')
             ->call('save')
             ->assertHasErrors(['email']);
     }
@@ -120,11 +153,11 @@ class UserManagementTest extends TestCase
         $this->actingAs(User::factory()->admin()->create());
 
         Livewire::test('pages::users.edit', ['user' => $user])
-            ->set('password', 'new-password')
+            ->set('password', 'New-password1')
             ->call('save')
             ->assertHasNoErrors();
 
-        $this->assertTrue(Hash::check('new-password', $user->fresh()->password));
+        $this->assertTrue(Hash::check('New-password1', $user->fresh()->password));
     }
 
     public function test_the_last_admin_cannot_be_demoted(): void
