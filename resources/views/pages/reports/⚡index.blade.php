@@ -126,7 +126,7 @@ new #[Title('Reports')] class extends Component {
 }; ?>
 
 <section class="w-full space-y-6">
-    <x-page-header :title="__('Reports')" :description="__('Harvest, financial, and care summaries for the selected period.')" />
+    <x-page-header :title="__('Reports')" :description="__('Report of harvest, financial, and care summaries for the selected period.')" />
 
     <form method="GET" action="{{ route('reports.index') }}" class="rounded-xl border border-zinc-200 bg-white p-5 dark:border-zinc-700 dark:bg-zinc-900">
         <div class="grid items-end gap-4 md:grid-cols-2 xl:grid-cols-4">
