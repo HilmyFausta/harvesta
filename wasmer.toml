@@ -1,6 +1,6 @@
 [package]
 name = "hilmyfausta/harvesta"
-version = "0.1.2"
+version = "0.1.10"
 description = "Harvesta - Tree & Orchard Management System"
 
 [dependencies]
@@ -15,4 +15,4 @@ module = "php/php:php"
 runner = "wasi"
 
 [command.annotations.wasi]
-main-args = ["-c", "/app/php.ini", "-t", "/app/public", "-S", "0.0.0.0:8080"]
+main-args = ["-c", "/app/php.ini", "-t", "/app/public", "-S", "0.0.0.0:8080", "/app/wasmer-router.php"]
