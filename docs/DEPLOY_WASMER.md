@@ -1,638 +1,279 @@
-# Panduan Deploy: Wasmer Edge + Supabase (Gratis)
+# Deployment Wasmer Edge — Harvesta (Backup Plan)
 
-> **Arsitektur deployment alternatif untuk Harvesta menggunakan Wasmer Edge**
-
-## Arsitektur
-
-```
-Developer ──► Wasmer CLI (deploy) ──► Wasmer Edge (Global CDN)
-                                         │
-                                         ├──► Supabase PostgreSQL (data)
-                                         └──► Supabase Storage S3 (foto pohon)
-```
-
-**Keuntungan:**
-- ✅ 100% gratis untuk kedua service (Wasmer Free tier + Supabase Free tier)
-- ✅ Tidak butuh kartu kredit
-- ✅ Global CDN dengan edge computing
-- ✅ Deploy langsung dari CLI, tanpa GitHub Actions
-- ✅ Data demo dengan 3 akun: Admin (full access), Staff (field operations), Viewer (read-only untuk demo)
-
-**Keterbatasan:**
-- ⚠️ Wasmer hanya menyediakan PHP 8.3.4 (bukan 8.4), butuh downgrade composer dependencies
-- ⚠️ Region PostgreSQL terbatas ke France atau Canada (bukan Singapore)
-- ⚠️ Cold start bisa 5-10 detik untuk request pertama
+> Dokumen ini mencatat proses setup, konfigurasi, bug yang ditemukan, dan cara fix-nya selama eksperimen deploy Harvesta ke Wasmer Edge sebagai *backup plan* di luar deployment utama (Azure App Service + Supabase).
+>
+> Status: **berhasil jalan**, tapi tetap backup plan — bukan pengganti Azure untuk submission utama, karena stack resmi tim masih PostgreSQL via Supabase (lihat PRD bagian 9.1) dan perubahan platform ini belum dibicarakan/disetujui bertiga.
 
 ---
 
-## Persiapan
+## 1. Ringkasan Arsitektur
 
-**Yang dibutuhkan:**
-1. Akun GitHub (untuk login Supabase)
-2. Akun Wasmer (gratis, sign up dengan GitHub)
-3. Wasmer CLI terinstall di laptop
-4. Akses internet stabil (upload ±50 MB saat deploy pertama)
-
-**Estimasi waktu:** 30-45 menit untuk setup pertama kali.
-
----
-
-## Bagian A — Supabase (Database + Storage Foto)
-
-### A1. Buat Project Supabase
-
-1. Buka <https://supabase.com> → **Sign in with GitHub**
-2. Klik **New project**:
-   - **Organization**: pilih/buat organization Anda
-   - **Name**: `harvesta`
-   - **Database Password**: klik **Generate a password** → 📋 **SIMPAN** password ini (Anda akan butuh nanti sebagai `DB_PASSWORD`)
-   - **Region**: **Southeast Asia (Singapore)** (untuk latency optimal)
-   - **Plan**: Free (1 project, 500 MB database, 1 GB storage)
-3. Klik **Create new project** → tunggu ±2 menit sampai status "Healthy"
-
-### A2. Ambil Data Koneksi Database
-
-1. Di dashboard project, klik tombol **Connect** (pojok kanan atas)
-2. Pilih **Session pooler** (BUKAN "Direct connection")
-   - Wasmer Edge butuh IPv4, jadi gunakan pooler
-3. 📋 Catat informasi berikut dari connection string:
-   ```
-   postgresql://postgres.[PROJECT-REF]:[PASSWORD]@[HOST]:5432/postgres
-   ```
-   - `HOST` → `DB_HOST` (contoh: `aws-0-ap-southeast-1.pooler.supabase.com`)
-   - `postgres.[PROJECT-REF]` → `DB_USERNAME` (dengan titik dan kode project, contoh: `postgres.abcdefghijklmnop`)
-   - Password yang Anda generate tadi → `DB_PASSWORD`
-   - Port: `5432` (default)
-   - Database: `postgres` (default)
-
-4. 📋 Catat juga **Project Reference Code** (kode acak di URL):
-   ```
-   https://supabase.com/dashboard/project/[PROJECT-REF]
-   ```
-   Simpan `[PROJECT-REF]` ini, butuh untuk storage S3.
-
-### A3. Buat Bucket Storage untuk Foto
-
-1. Di menu kiri, klik **Storage**
-2. Klik **New bucket**:
-   - **Name**: `harvesta-photos` (harus persis seperti ini)
-   - **Public bucket**: ✅ **AKTIFKAN** (agar foto bisa diakses publik)
-   - **Restrict file size**: `2 MB` (opsional tapi disarankan)
-   - **Allowed MIME types**: `image/jpeg, image/png, image/webp` (opsional)
-3. Klik **Save**
-
-### A4. Buat S3 Access Keys untuk Storage
-
-1. Klik **Project Settings** (ikon gear di kiri bawah) → tab **Storage**
-2. Scroll ke bagian **S3 Connection**
-3. Pastikan toggle **Enable connection via S3 protocol** dalam keadaan **ON**
-4. 📋 Catat informasi berikut:
-   - **Endpoint**: `https://[PROJECT-REF].storage.supabase.co/storage/v1/s3` → `PHOTO_S3_ENDPOINT`
-   - **Region**: `ap-southeast-1` (biasanya) → `PHOTO_S3_REGION`
-
-5. Scroll ke bagian **S3 Access Keys** → klik **New access key**:
-   - **Description**: `wasmer-edge`
-   - Klik **Create**
-   - 📋 **SEGERA SIMPAN** kedua value ini (hanya ditampilkan sekali):
-     - **Access key ID** → `PHOTO_S3_ACCESS_KEY_ID`
-     - **Secret access key** → `PHOTO_S3_SECRET_ACCESS_KEY`
-
-6. 📋 Susun URL publik bucket (untuk akses foto):
-   ```
-   https://[PROJECT-REF].supabase.co/storage/v1/object/public/harvesta-photos
-   ```
-   Ganti `[PROJECT-REF]` dengan kode project Anda → simpan sebagai `PHOTO_DISK_URL`
-
-**Checklist Supabase:**
-- ✅ Project created
-- ✅ DB_HOST, DB_USERNAME, DB_PASSWORD tersimpan
-- ✅ Bucket `harvesta-photos` dibuat (public)
-- ✅ S3 credentials (access key + secret) tersimpan
-- ✅ PHOTO_DISK_URL tersusun
+| Komponen | Detail |
+|---|---|
+| Platform | Wasmer Edge (WebAssembly runtime, bukan container Docker biasa) |
+| Interpreter PHP | `php/php` versi `8.3.4` (resmi dari Wasmer registry) |
+| Laravel version | 13 (**tidak didowngrade** — lihat catatan di bagian 6) |
+| Database | PostgreSQL bawaan Wasmer (bukan Supabase) |
+| Nama app | `harvesta` (namespace `hilmyfausta`) |
+| URL live | `https://harvesta.wasmer.app` |
+| Dashboard manage | `https://wasmer.io/apps/hilmyfausta/harvesta` |
 
 ---
 
-## Bagian B — Setup Wasmer CLI
+## 2. Install & Setup Wasmer CLI (di laptop, bukan di server)
 
-### B1. Install Wasmer CLI
+Wasmer CLI adalah tool development yang di-install **lokal di laptop**, dipakai untuk build/test/deploy — sepenuhnya terpisah dari server manapun (termasuk Azure).
 
-**Linux / macOS:**
 ```bash
 curl https://get.wasmer.io -sSfL | sh
+source ~/.bashrc   # atau ~/.zshrc, sesuai shell yang dipakai
+wasmer --version   # pastikan terpasang
+wasmer login       # sambungkan ke akun Wasmer
 ```
-
-**Windows (PowerShell sebagai Administrator):**
-```powershell
-iwr https://win.wasmer.io -useb | iex
-```
-
-**Verifikasi:**
-```bash
-wasmer --version
-# Output: wasmer 5.x.x (atau lebih tinggi)
-```
-
-### B2. Login ke Wasmer
-
-```bash
-wasmer login
-```
-
-- Browser akan terbuka → login dengan GitHub
-- Setelah berhasil, CLI akan menyimpan token otomatis
-- Tes: `wasmer whoami` (harus muncul username Anda)
 
 ---
 
-## Bagian C — Persiapan Kode untuk Deploy
+## 3. Isi `wasmer.toml` (final, yang sudah terbukti jalan)
 
-### C1. Generate APP_KEY
+File ini ada di root project, sejajar dengan `artisan`, `composer.json`, dll.
 
-Di folder project Harvesta:
-
-```bash
-php artisan key:generate --show
-```
-
-📋 Salin output lengkapnya (format: `base64:...`) → simpan sebagai `APP_KEY`
-
-**PENTING:** Gunakan `--show` agar tidak mengubah file `.env` lokal Anda.
-
-### C2. Tentukan Password Seeder
-
-Aplikasi akan membuat 3 akun otomatis saat pertama kali deploy:
-
-1. **Admin** (`admin@example.com`) — akses penuh ke semua fitur
-2. **Staff** (`staff@example.com`) — field operations (CRUD trees, care logs, harvests)
-3. **Viewer** (`viewer@example.com`) — **read-only** untuk demo ke penilai/dosen
-
-📋 Buat 3 password yang **BERBEDA dan AMAN** (minimal 8 karakter):
-- `SEED_ADMIN_PASSWORD` (contoh: `Admin2024!Secure`)
-- `SEED_STAFF_PASSWORD` (contoh: `Staff2024!Field`)
-- `SEED_VIEWER_PASSWORD` (contoh: `Viewer2024!Demo`)
-
-⚠️ **Jangan gunakan password default "password" di production!**
-
-### C3. Simpan Semua Secrets ke Wasmer
-
-Sekarang kita akan memasukkan semua nilai rahasia (secrets) ke Wasmer. Copy-paste command berikut **satu per satu**, ganti `<nilai>` dengan data Anda:
-
-```bash
-# APP_KEY
-wasmer app secrets create APP_KEY "<base64:xxx dari C1>"
-
-# Database credentials (dari A2)
-wasmer app secrets create DB_HOST "<dari A2>"
-wasmer app secrets create DB_PORT "5432"
-wasmer app secrets create DB_DATABASE "postgres"
-wasmer app secrets create DB_USERNAME "<postgres.xxx dari A2>"
-wasmer app secrets create DB_PASSWORD "<password dari A1>"
-
-# Photo storage S3 (dari A4)
-wasmer app secrets create PHOTO_S3_ENDPOINT "<dari A4>"
-wasmer app secrets create PHOTO_S3_REGION "<dari A4>"
-wasmer app secrets create PHOTO_DISK_URL "<dari A4 langkah 6>"
-wasmer app secrets create PHOTO_S3_ACCESS_KEY_ID "<dari A4>"
-wasmer app secrets create PHOTO_S3_SECRET_ACCESS_KEY "<dari A4>"
-
-# Seeder passwords (dari C2)
-wasmer app secrets create SEED_ADMIN_PASSWORD "<password admin Anda>"
-wasmer app secrets create SEED_STAFF_PASSWORD "<password staff Anda>"
-wasmer app secrets create SEED_VIEWER_PASSWORD "<password viewer Anda>"
-```
-
-**Verifikasi:**
-```bash
-wasmer app secrets list
-```
-
-Anda harus melihat 13 secrets (nilai actual tidak ditampilkan untuk keamanan).
-
----
-
-## Bagian D — Deploy Aplikasi
-
-### D1. Cek Konfigurasi
-
-Pastikan file-file ini sudah ada dan benar:
-
-**File: `app.yaml`** (sudah ada di root project)
-```yaml
-kind: wasmer.io/App.v0
-name: harvesta
-owner: hilmyfausta  # ⚠️ GANTI dengan username Wasmer Anda!
-package: .
-# ... (sisanya sudah dikonfigurasi)
-```
-
-⚠️ **PENTING:** Edit `app.yaml` dan ganti `owner: hilmyfausta` dengan username Wasmer Anda!
-
-**File: `wasmer.toml`** (sudah ada di root project)
 ```toml
 [package]
-name = "hilmyfausta/harvesta"  # ⚠️ GANTI username!
-# ... (sisanya sudah dikonfigurasi)
+name = "hilmyfausta/harvesta"
+version = "0.1.8"
+description = "Harvesta - Tree & Orchard Management System"
+
+[dependencies]
+"php/php" = "=8.3.4"
+
+[fs]
+"/app" = "."
+
+[[command]]
+name = "start"
+module = "php/php:php"
+runner = "wasi"
+
+[command.annotations.wasi]
+main-args = ["-c", "/app/php.ini", "-t", "/app/public", "-S", "0.0.0.0:8080", "/app/wasmer-router.php"]
 ```
 
-⚠️ **PENTING:** Edit `wasmer.toml` dan ganti `hilmyfausta/harvesta` dengan `<username-anda>/harvesta`!
+Penjelasan tiap bagian:
+- `[dependencies] "php/php" = "=8.3.4"` — nentuin interpreter PHP yang jalanin kode di runtime. **Ini terpisah total dari versi PHP yang dipakai buat `composer install`** (lihat bagian 6, ini penting).
+- `[fs] "/app" = "."` — mount seluruh folder project lokal (termasuk `vendor/` hasil `composer install` lokal) ke path `/app` di sandbox WASI. Wasmer **tidak** menjalankan `composer install` atau build step apapun sendiri — semua file yang dibutuhkan harus sudah ada duluan di folder lokal sebelum `wasmer deploy`.
+- `main-args` — argumen buat PHP built-in server. Urutan pentingnya: `-c` (php.ini custom), `-t` (document root = `public/`), `-S` (host:port), lalu **path router script** di paling akhir (lihat bagian 5, ini kunci dari bug UI nggak muncul).
 
-### D2. Deploy ke Wasmer Edge
-
-Di folder root project:
-
-```bash
-wasmer deploy
-```
-
-**Proses yang terjadi:**
-1. ✅ Wasmer membaca `app.yaml` dan `wasmer.toml`
-2. ✅ Meng-package seluruh folder project (±50 MB)
-3. ✅ Upload ke Wasmer Edge
-4. ✅ Deploy ke region yang dipilih (France)
-5. ✅ Menjalankan PHP built-in server
-6. ✅ Memberikan URL publik (contoh: `https://harvesta-hilmyfausta.wasmer.app`)
-
-**Output sukses:**
-```
-✅ App deployed successfully!
-🌍 Available at: https://harvesta-<username>.wasmer.app
-```
-
-📋 Simpan URL ini untuk akses aplikasi.
-
-### D3. Migrasi Database Otomatis
-
-✅ **Aplikasi sudah dikonfigurasi untuk auto-migrate pada first boot!**
-
-File `bootstrap/wasmer-init.php` akan otomatis:
-1. Cek apakah database sudah di-setup (cek tabel `migrations`)
-2. Jika belum, run `php artisan migrate --force`
-3. Lalu run `php artisan db:seed --force`
-4. Script ini dijalankan setiap kali app start, tapi hanya migrate/seed sekali
-
-**Jadi kamu tidak perlu SSH atau manual trigger!** 🎉
-
-### D4. Backup: Manual Trigger (jika auto-init gagal)
-
-Jika karena alasan tertentu auto-init tidak jalan, kamu bisa trigger manual lewat web:
-
-**Langkah:**
-
-1. **Extract 16 karakter dari APP_KEY kamu:**
-   ```bash
-   # Misal APP_KEY = base64:abcdefgh12345678XYZABC123...
-   # Ambil karakter ke-8 sampai ke-23 (16 karakter)
-   # Contoh: abcdefgh1234567
-   ```
-
-2. **Akses URL setup:**
-   ```
-   https://harvesta-<username>.wasmer.app/setup-db?key=<16-char-dari-app-key>
-   ```
-
-3. **Output akan menampilkan:**
-   - Migration results
-   - Seeder results
-   - Config cache status
-
-4. **PENTING:** Route ini protected dengan:
-   - ✅ Throttle: max 3 requests per jam
-   - ✅ Key validation: harus pakai extract APP_KEY
-   - ✅ Only works in production
-
-⚠️ **Setelah berhasil setup, HAPUS route ini** dari `routes/web.php` (cari `Route::get('/setup-db'`) dan deploy ulang untuk keamanan.
+### Versi naik otomatis tiap deploy
+Setiap `wasmer deploy`, kalau isi file berubah tapi `version` di `[package]` nggak diubah manual, Wasmer bakal nawarin bump otomatis (`0.1.7 -> 0.1.8`, dst) — tinggal jawab `y`. Nggak wajib diubah manual, tapi nomor versi di file ini akan ketinggalan dari versi yang beneran ke-deploy (cek versi aktual di dashboard atau `wasmer app list`/riwayat `Releases`).
 
 ---
 
-## Bagian E — Verifikasi & Testing
+## 4. Database: PostgreSQL bawaan Wasmer
 
-### E1. Cek Aplikasi Berjalan
+**Penting:** ini **database terpisah dari Supabase** yang dipakai di Azure. Di-provision otomatis sama Wasmer saat app pertama kali dibuat, nggak perlu setup manual dari awal.
 
-1. Buka URL aplikasi: `https://harvesta-<username>.wasmer.app`
-2. Anda akan diredirect ke halaman login
+Cara lihat kredensialnya: buka dashboard app → tab **Databases** (`https://wasmer.io/apps/hilmyfausta/harvesta/databases`).
 
-### E2. Login dengan 3 Akun Seeder
+| Field | Contoh nilai (cek dashboard buat yang terbaru) |
+|---|---|
+| Host | `psql.fr-roub1.bengt.wasmernet.com` |
+| Port | `20184` |
+| Database name | `db_harvesta` |
+| Username | `user_57f95d5a` |
+| Password | (lihat tombol mata di dashboard, atau `wasmer app secrets reveal DB_PASSWORD`) |
 
-**1. Akun Admin (Full Access):**
-```
-Email: admin@example.com
-Password: <SEED_ADMIN_PASSWORD Anda>
-```
+**Lokasi fisik database:** `fr-roub1` = Roubaix, Prancis (konvensi penamaan data center ala OVHcloud). Ini jauh dari Indonesia — berpengaruh ke kecepatan kalau akses langsung dari laptop (lihat bagian 8).
 
-Setelah login:
-- ✅ Dashboard menampilkan statistik lengkap (termasuk finance)
-- ✅ Menu sidebar lengkap: Trees, Care Logs, Harvests, Master Data, Finance, Reports, Users
-- ✅ Bisa CRUD semua data
+### Mengelola environment variables / secrets
 
-**2. Akun Staff (Field Operations):**
-```
-Email: staff@example.com
-Password: <SEED_STAFF_PASSWORD Anda>
-```
-
-Setelah login:
-- ✅ Dashboard menampilkan statistik (tanpa finance)
-- ✅ Menu sidebar: Trees, Care Logs, Harvests, Master Data (tanpa Finance, Reports, Users)
-- ✅ Bisa create/edit trees, care logs, harvests
-- ✅ Tidak bisa delete atau akses finance/users
-
-**3. Akun Viewer (Read-Only untuk Demo):**
-```
-Email: viewer@example.com
-Password: <SEED_VIEWER_PASSWORD Anda>
-```
-
-Setelah login:
-- ✅ Dashboard menampilkan statistik (tanpa finance)
-- ✅ Menu sidebar: Trees, Care Logs, Harvests, Master Data
-- ✅ **HANYA BISA MELIHAT** (tombol Create/Edit/Delete tidak muncul)
-- ✅ Cocok untuk demo ke penilai/dosen tanpa khawatir data berubah
-
-### E3. Tes Upload Foto Pohon
-
-1. Login sebagai **Admin** atau **Staff**
-2. Menu **Trees** → klik salah satu pohon → **Edit**
-3. Upload foto baru (max 2 MB, format JPG/PNG/WebP)
-4. Klik **Save changes**
-5. Foto harus muncul sebagai thumbnail di daftar dan besar di halaman detail
-6. Cek di Supabase dashboard → Storage → `harvesta-photos` → folder `photos/trees/` harus ada file baru
-
-### E4. Cek Data Demo
-
-Seeder sudah mengisi data demo:
-- ✅ 4 categories (Fruit, Timber, Ornamental, Spice)
-- ✅ 10 tree types (Durian, Mango, Teak, dll.)
-- ✅ 3 blocks
-- ✅ 40 trees dengan foto
-- ✅ 100+ care logs
-- ✅ 40 harvests
-- ✅ 30 expenses (hanya admin yang bisa lihat)
-- ✅ 20 sales (hanya admin yang bisa lihat)
-- ✅ Data tersebar 12 bulan terakhir (grafik terlihat hidup)
-
----
-
-## Bagian F — Update & Re-deploy
-
-### F1. Update Kode
-
-Setelah ada perubahan kode di laptop:
+Laravel baca kredensial DB dari env var standar: `DB_HOST`, `DB_PORT`, `DB_DATABASE`, `DB_USERNAME`, `DB_PASSWORD`. Di Wasmer, env var di-set lewat `wasmer app secrets`, **bukan** file `.env` yang di-deploy (`.env` tetap dipakai lokal aja, jangan ikut ke-commit/ke-deploy).
 
 ```bash
-# Test lokal dulu
-composer test  # Pint + PHPStan + PHPUnit
-
-# Deploy ulang
-wasmer deploy
-```
-
-Wasmer akan:
-1. ✅ Re-package project terbaru
-2. ✅ Upload versi baru
-3. ✅ Hot reload tanpa downtime
-4. ✅ Database dan foto tetap aman (tidak berubah)
-
-⚠️ **Migrasi database baru harus dijalankan manual via SSH.**
-
-### F2. Update Secrets
-
-Jika perlu ganti password atau credentials:
-
-```bash
-# Lihat daftar secrets
+# Lihat semua secrets (TANPA value, cuma nama + kapan terakhir update)
 wasmer app secrets list
 
-# Update secret tertentu
-wasmer app secrets update SEED_ADMIN_PASSWORD "<password-baru>"
+# Lihat SEMUA value sekaligus (hati-hati, ini nampilin semua secret termasuk password)
+wasmer app secrets reveal --all
 
-# Hapus secret (jika salah)
-wasmer app secrets delete SEED_ADMIN_PASSWORD
-wasmer app secrets create SEED_ADMIN_PASSWORD "<password-benar>"
+# Lihat satu secret spesifik
+wasmer app secrets reveal DB_DATABASE
 
-# Restart app agar secrets baru dimuat
-wasmer app restart harvesta
-```
+# Bikin secret BARU (kalau namanya belum pernah ada)
+wasmer app secrets create NAMA_SECRET "nilainya"
 
----
+# Update secret yang SUDAH ADA (pakai update, bukan create, atau bakal error)
+wasmer app secrets update NAMA_SECRET "nilai_baru"
 
-## Troubleshooting
+# Hapus secret
+wasmer app secrets delete NAMA_SECRET
 
-### ❌ Error: "Connection refused" atau "Could not connect to database"
-
-**Penyebab:**
-- DB_HOST, DB_USERNAME, atau DB_PASSWORD salah
-- Supabase project di-pause (free tier pause setelah 1 minggu tidak aktif)
-
-**Solusi:**
-1. Buka Supabase dashboard → pastikan project status "Healthy"
-2. Jika di-pause, klik "Resume project"
-3. Verifikasi secrets: `wasmer app secrets list`
-4. Tes koneksi lokal dulu:
-   ```bash
-   psql "postgresql://postgres.xxx:password@host:5432/postgres?sslmode=require"
-   ```
-
-### ❌ Error: "Class 'League\Flysystem\AwsS3V3\AwsS3V3Adapter' not found"
-
-**Penyebab:**
-Package S3 belum terinstall.
-
-**Solusi:**
-```bash
-composer require league/flysystem-aws-s3-v3
-composer install --no-dev --optimize-autoloader
+# Setelah ubah secret apapun, WAJIB redeploy biar kepakai
 wasmer deploy
 ```
 
-### ❌ Foto tidak muncul / Error 403 saat akses foto
+Daftar env var yang dipakai project ini (nama saja, value jangan ditaruh di dokumen ini):
+```
+APP_NAME, APP_ENV, APP_DEBUG, APP_KEY, APP_LOCALE, APP_FALLBACK_LOCALE, APP_TIMEZONE
+DB_CONNECTION, DB_HOST, DB_PORT, DB_DATABASE, DB_USERNAME, DB_PASSWORD, DB_SSLMODE
+CACHE_STORE, SESSION_DRIVER, QUEUE_CONNECTION, LOG_CHANNEL, LOG_LEVEL
+PHOTO_DISK, PHOTO_DISK_ROOT, PHOTO_DISK_URL
+PHOTO_S3_ACCESS_KEY_ID, PHOTO_S3_SECRET_ACCESS_KEY, PHOTO_S3_BUCKET, PHOTO_S3_ENDPOINT, PHOTO_S3_REGION, PHOTO_S3_USE_PATH_STYLE_ENDPOINT
+SEED_ADMIN_EMAIL, SEED_ADMIN_PASSWORD, SEED_STAFF_EMAIL, SEED_STAFF_PASSWORD, SEED_VIEWER_EMAIL, SEED_VIEWER_PASSWORD, SEED_DEMO_DATA
+MAIL_MAILER, PHP_CLI_SERVER_WORKERS
+```
 
-**Penyebab:**
-- Bucket tidak public
-- PHOTO_DISK_URL salah
-- S3 credentials salah
+---
 
-**Solusi:**
-1. Supabase → Storage → `harvesta-photos` → **Make public** (jika belum)
-2. Test URL manual: `https://[PROJECT-REF].supabase.co/storage/v1/object/public/harvesta-photos/test.jpg`
-3. Verifikasi semua PHOTO_S3_* secrets di Wasmer
+## 5. Bug & Fix yang ditemukan (urut kronologis)
 
-### ❌ Aplikasi lambat / cold start 10+ detik
+### 5.1 — Salah nama database (`DB_DATABASE` nyasar isinya)
 
-**Penyebab:**
-Free tier Wasmer sleep setelah idle.
+**Gejala:** error 500, log nunjukin:
+```
+FATAL: permission denied for database "postgres"
+DETAIL: User does not have CONNECT privilege.
+```
 
-**Solusi:**
-- Normal untuk free tier
-- Request pertama akan lambat (cold start)
-- Request berikutnya cepat (warm)
-- Untuk demo: buka aplikasi 2-3 menit sebelum presentasi
+**Penyebab:** waktu ganti dari eksperimen Supabase ke database bawaan Wasmer, `DB_HOST`/`DB_PORT`/`DB_USERNAME`/`DB_PASSWORD` sempat diupdate ke kredensial Wasmer, tapi `DB_DATABASE` ketinggalan masih isi lama (`postgres`, gaya penamaan default Supabase) — padahal nama database yang beneran di-provision Wasmer itu `db_harvesta`. Selain itu sempat kebuat secret baru namanya `DB_NAME` (bukan `DB_DATABASE`) yang nggak kebaca Laravel sama sekali (`config/database.php` baca `env('DB_DATABASE')`).
 
-### ❌ Error: "Migration table not found"
-
-**Penyebab:**
-Migrasi belum dijalankan.
-
-**Solusi:**
+**Fix:**
 ```bash
-wasmer ssh harvesta
+wasmer app secrets update DB_DATABASE db_harvesta
+wasmer app secrets delete DB_NAME   # hapus yang nyasar
+wasmer deploy
+```
+
+### 5.2 — Auto-migration di `bootstrap/wasmer-init.php` gagal diam-diam
+
+**Gejala:** setelah fix 5.1, error baru:
+```
+SQLSTATE[42P01]: Undefined table: 7 ERROR: relation "sessions" does not exist
+```
+Database kebaca sukses, tapi tabel-tabelnya nggak pernah ke-create — padahal ada script auto-migrate.
+
+**Penyebab:** project ini punya file `bootstrap/wasmer-init.php` yang didesain buat auto-jalanin `php artisan migrate` & `db:seed` di boot pertama, lewat `exec('php artisan migrate --force ...')`. Masalahnya, `exec()` buat spawn subprocess baru **nggak bisa diandalkan di sandbox WASI** — command `php` nggak ketemu di situ, jadi `exec()` gagal total (output kosong, log cuma nunjukin `Migration output: ` tanpa isi). Ini juga konsisten sama `Instance exited with code ExitCode::127` yang muncul di log (127 = "command not found" di shell).
+
+**Fix:** migrate manual **dari laptop langsung ke database remote** (database Wasmer bisa diakses dari luar, nggak perlu lewat sandbox):
+```bash
+# 1. Backup .env lokal dulu
+cp .env .env.local.backup   # INGAT: file ini JANGAN sampai ke-commit ke git (ada secret di dalamnya)
+
+# 2. Ganti sementara DB_* di .env ke kredensial database Wasmer (lihat bagian 4)
+
+# 3. Migrate & seed langsung dari laptop (native PHP, bukan exec() dari sandbox)
 php artisan migrate --force
 php artisan db:seed --force
+
+# 4. Kembalikan .env lokal ke semula
+cp .env.local.backup .env
+rm .env.local.backup   # hapus setelah dipakai, JANGAN biarkan nyangkut
+```
+Catatan: proses ini **lambat** (migrate bisa beberapa menit) karena laptop di Indonesia connect langsung ke database di Prancis (`fr-roub1`), beda dari saat aplikasi jalan normal yang query-nya server-ke-server. Ini wajar, bukan tanda error.
+
+Setelah tabel `migrations` ada, `wasmer-init.php` otomatis skip proses auto-migrate di boot berikutnya (dia cek `to_regclass('public.migrations')` dulu sebelum coba `exec()`), jadi masalah ini nggak keulang terus selama tabel nggak ke-drop.
+
+### 5.3 — UI nggak ke-load (404 di asset milik package, bukan asset statis biasa)
+
+**Gejala:** backend jalan (login, CRUD berhasil, redirect bener), tapi tampilan mentah tanpa CSS/JS. Log nunjukin:
+```
+[404]: GET /flux/flux.min.js?id=... - No such file or directory
+[404]: GET /livewire-xxxxxxxx/livewire.min.js?id=... - No such file or directory
 ```
 
-### ❌ Login gagal / "These credentials do not match our records"
+**Penyebab:** `/flux/flux.min.js` dan `/livewire-{hash}/livewire.min.js` itu **route virtual** yang didaftarkan oleh package Livewire & Flux sendiri (nge-stream file dari dalam `vendor/`, bukan file fisik di `public/`). PHP built-in server (`php -S`), kalau dijalankan **tanpa router script**, punya perilaku: request yang punya ekstensi dikenal (`.js`, `.css`, dll) langsung dicek keberadaan file fisiknya — kalau nggak ketemu, langsung 404 duluan **tanpa pernah manggil `index.php`**. Request tanpa ekstensi (`/dashboard`, `/login`) selalu fallback ke `index.php`, makanya itu kelihatan jalan normal.
 
-**Penyebab:**
-- Seeder belum dijalankan
-- Password secrets salah
+**Fix langkah 1 (gagal):** nyoba pakai router bawaan Laravel (`vendor/laravel/framework/src/Illuminate/Foundation/resources/server.php`) — tapi script ini pakai `getcwd()` buat nebak lokasi `public/`, dan ternyata **`getcwd()` di sandbox WASI Wasmer nggak reliable** (balikin `/` bukan `/app/public`), jadi malah fatal error `require_once(//index.php)`.
 
-**Solusi:**
-1. Cek apakah tabel `users` ada di Supabase:
-   ```sql
-   SELECT email, role FROM users;
-   ```
-2. Jika kosong, run seeder:
-   ```bash
-   wasmer ssh harvesta
-   php artisan db:seed --force --class=UserSeeder
-   ```
-3. Verifikasi password secrets: `wasmer app secrets list`
-
-### ❌ Menu Finance/Users/Reports muncul untuk Staff/Viewer
-
-**Penyebab:**
-Policy tidak diterapkan dengan benar.
-
-**Solusi:**
-Cek file `resources/views/components/layout.blade.php` atau sidebar component, pastikan ada pengecekan:
+**Fix final:** bikin router script sendiri, `wasmer-router.php` di root project, pakai path **absolut** (bukan `getcwd()`):
 ```php
-@can('viewAny', App\Models\Expense::class)
-    <!-- Menu Finance -->
-@endcan
+<?php
+
+$publicPath = '/app/public';
+
+$uri = urldecode(
+    parse_url($_SERVER['REQUEST_URI'], PHP_URL_PATH) ?? ''
+);
+
+if ($uri !== '/' && file_exists($publicPath.$uri)) {
+    return false;
+}
+
+require_once $publicPath.'/index.php';
 ```
+Lalu daftarkan di `wasmer.toml` sebagai argumen terakhir `main-args` (lihat bagian 3). Setelah ini, request yang nggak ketemu file fisiknya tetap di-fallback ke `index.php`, jadi route virtual Livewire/Flux bisa kehandle normal.
 
 ---
 
-## Monitoring & Logs
+## 6. Soal versi PHP: kenapa Laravel 13 (butuh PHP ≥8.4) bisa jalan di interpreter 8.3.4
 
-### Melihat Logs Aplikasi
+Ini sempat jadi concern besar di awal eksperimen, tapi ternyata **non-issue**, karena cara kerja Wasmer:
+
+Wasmer **tidak** menjalankan `composer install` di dalam sandbox-nya sama sekali. `wasmer.toml` cuma mounting folder project apa adanya (`[fs] "/app" = "."`), termasuk folder `vendor/` yang sudah di-build duluan **di laptop** pakai PHP lokal (PHP 8.4). Dependency `"php/php" = "8.3.4"` cuma nentuin interpreter yang menjalankan kode PHP di runtime — sama sekali terpisah dari versi PHP yang dipakai buat resolve dependency Composer.
+
+Karena PHP itu bahasa interpreted (bukan dicompile), kode yang sudah berhasil di-resolve Composer tetap bisa dijalankan interpreter versi lain, **selama nggak ada syntax yang benar-benar eksklusif ke versi lebih baru** (contoh: property hooks PHP 8.4) yang kepake di code path yang dieksekusi. Untuk fitur-fitur yang dipakai project ini, ternyata aman.
+
+**Implikasi:** `vendor/` yang di-mount ke Wasmer **harus** hasil `composer install` dari laptop sendiri (PHP 8.4 lokal), bukan dari dalam sandbox. Setiap kali ada perubahan dependency, jalankan `composer install`/`composer update` lokal dulu sebelum `wasmer deploy`.
+
+---
+
+## 7. Cara deploy ulang (update rutin)
 
 ```bash
-wasmer app logs harvesta --follow
+# 1. Pastikan vendor/ dan public/build/ up to date
+composer install
+pnpm install
+pnpm run build
+
+# 2. Deploy
+wasmer deploy
+# Kalau ada warning soal version bump, jawab "y"
+
+# 3. Tunggu sampai "deployed successfully", lalu test akses
+# https://harvesta.wasmer.app
 ```
 
-Atau via dashboard: <https://wasmer.io/apps/harvesta> → tab **Logs**
+---
 
-### Melihat Metrics
+## 8. Known limitations / hal yang perlu diterima apa adanya
 
-Dashboard Wasmer → tab **Metrics**:
-- Request count
-- Response time
-- Error rate
-- Memory usage
-
-### Database Monitoring
-
-Supabase dashboard → tab **Database**:
-- Disk usage (max 500 MB free tier)
-- Connection pooler stats
-- Slow queries
+- **Latensi geografis:** database di Prancis (`fr-roub1`), app Wasmer Edge entah di region mana persis — kalau dirasa lemot, ini kemungkinan besar penyebabnya, bukan bug.
+- **Nggak ada akses SSH/shell ke sandbox** (`wasmer app ssh` tidak tersedia di CLI versi ini) — semua debugging harus lewat `wasmer app secrets`, log dashboard, dan deploy ulang. Nggak bisa masuk terminal interaktif ke instance yang jalan.
+- **`exec()`/subprocess spawning nggak reliable** di sandbox WASI — jangan desain fitur apapun ke depannya yang bergantung pada itu (termasuk kalau mau benerin `wasmer-init.php` biar auto-migrate beneran jalan — perlu pendekatan lain, bukan `exec()`).
+- **Setiap migration baru** di masa depan (kalau ada field/tabel tambahan) **harus di-apply manual** dengan cara yang sama kayak bagian 5.2 — connect `.env` lokal ke database Wasmer, `php artisan migrate --force`, balikin `.env`. Nggak ada mekanisme otomatis yang bisa diandalkan saat ini.
 
 ---
 
-## Checklist Deployment
+## 9. Cara reset total database dari awal (kalau suatu saat perlu)
 
-Gunakan checklist ini sebelum submit tugas:
+**Hati-hati — ini destruktif, drop semua data.** Hanya dilakukan kalau memang sengaja mau mulai dari nol lagi (misal demo ulang, atau data kacau).
 
-### Supabase
-- [ ] Project created dan status "Healthy"
-- [ ] Database credentials tersimpan dan terverifikasi
-- [ ] Bucket `harvesta-photos` public
-- [ ] S3 credentials tersimpan dan terverifikasi
+```bash
+# 1. Arahkan .env lokal ke database Wasmer (seperti langkah 5.2)
+cp .env .env.local.backup
+# edit .env, isi DB_* dengan kredensial Wasmer (bagian 4)
 
-### Wasmer
-- [ ] CLI terinstall dan login berhasil
-- [ ] `app.yaml` dan `wasmer.toml` sudah diedit (ganti username)
-- [ ] 13 secrets sudah dibuat via `wasmer app secrets create`
-- [ ] Deploy berhasil dan URL publik tersedia
+# 2. Drop semua tabel & migrate ulang dari nol
+php artisan migrate:fresh --force
 
-### Aplikasi
-- [ ] Migrasi database dijalankan
-- [ ] Seeder dijalankan (3 akun + data demo)
-- [ ] Login 3 akun berhasil (admin, staff, viewer)
-- [ ] Upload foto berfungsi
-- [ ] Dashboard menampilkan data
-- [ ] Grafik/chart muncul
-- [ ] Policy authorization bekerja (viewer tidak bisa edit)
+# 3. Seed ulang data demo
+php artisan db:seed --force
 
-### Untuk Demo/Laporan
-- [ ] URL publik dicatat di laporan
-- [ ] Password 3 akun disimpan di tempat aman (jangan di repo!)
-- [ ] Screenshot semua fitur diambil
-- [ ] Tested di browser berbeda (Chrome, Firefox, Safari)
-- [ ] Tested di mobile (responsive)
+# 4. Kembalikan .env lokal
+cp .env.local.backup .env
+rm .env.local.backup
+```
+
+Opsional: kalau foto-foto di Supabase Storage juga mau direset bareng, itu di luar jangkauan `migrate:fresh` — perlu dihapus manual lewat dashboard Supabase Storage atau lewat seeder yang upload ulang (`DemoDataSeeder`, kalau ada logic upload foto di situ).
 
 ---
 
-## Tips untuk Demo ke Penilai/Dosen
+## 10. Checklist sebelum demo/presentasi pakai Wasmer
 
-1. **Gunakan akun Viewer untuk demo:**
-   - Berikan email `viewer@example.com` dan passwordnya
-   - Mereka bisa explore semua fitur tanpa mengubah data
-
-2. **Siapkan backup credentials:**
-   - Print/screenshot password 3 akun
-   - Jika lupa, bisa reset via SSH
-
-3. **Warm up sebelum presentasi:**
-   - Buka aplikasi 5 menit sebelum demo
-   - Klik beberapa menu (agar tidak cold start saat demo)
-
-4. **Siapkan fallback:**
-   - Record video demo (jika internet down)
-   - Screenshot semua halaman penting
-   - Catat semua URL dan credentials di notes
-
-5. **Untuk laporan:**
-   ```
-   URL Deploy: https://harvesta-<username>.wasmer.app
-   
-   Akun Demo (Viewer):
-   Email: viewer@example.com
-   Password: [tulis di laporan]
-   
-   Akun Admin (untuk penilai yang ingin lihat full feature):
-   Email: admin@example.com
-   Password: [tulis di laporan]
-   ```
+- [ ] `wasmer app secrets list` — pastikan semua secret `DB_*` sudah benar (terutama `DB_DATABASE`)
+- [ ] Akses `https://harvesta.wasmer.app` dari browser biasa (bukan incognito, biar nggak kena isu cache lama) beberapa menit sebelum demo — biar instance "panas" duluan
+- [ ] Cek halaman login, dashboard, dan minimal satu CRUD (misal Categories) beneran nampilin styling normal
+- [ ] Siapkan Azure (`https://harvesta-its-bkdderb9aea4cxe2.japaneast-01.azurewebsites.net`) sebagai cadangan kalau Wasmer tiba-tiba bermasalah pas demo
 
 ---
 
-## Perbandingan: Wasmer vs Azure
-
-| Aspek | Wasmer Edge | Azure App Service |
-|-------|-------------|-------------------|
-| **Biaya** | 100% gratis | Free F1 (limited) atau B1 (~$13/bulan dari kredit student) |
-| **Deploy** | CLI langsung | GitHub Actions |
-| **Cold Start** | 5-10 detik | 2-3 menit (F1) |
-| **Region** | France/Canada | Southeast Asia |
-| **PHP Version** | 8.3.4 (fixed) | 8.4+ (custom) |
-| **Setup** | Lebih cepat | Lebih kompleks |
-| **Production Ready** | Cocok untuk demo | Cocok untuk production |
-
-**Rekomendasi:**
-- Gunakan **Wasmer** jika: budget nol, deploy cepat, demo saja
-- Gunakan **Azure** jika: perlu PHP 8.4+, production serius, ada kredit student
-
----
-
-## Kontributor & Support
-
-Dokumentasi ini dibuat untuk tugas ETS Web Programming (D) — Midterm Exam.
-
-**Jika ada masalah:**
-1. Cek Troubleshooting section di atas
-2. Baca docs resmi: <https://docs.wasmer.io> dan <https://supabase.com/docs>
-3. Tanya di grup tim
-4. Contact asisten dosen
-
-**Good luck! 🚀**
+*Dokumen ini dibuat berdasarkan proses debugging solo (belum dibicarakan dengan partner tim). Perubahan platform deployment dari Azure ke Wasmer sebagai pengganti utama tetap butuh diskusi & persetujuan tim sebelum diputuskan, sesuai PRD bagian 16.*
