@@ -1,0 +1,73 @@
+name: deploy
+
+# Deploys to Wasmer Edge after the tests workflow passes on main.
+# Wasmer does not build anything itself, so this job prepares vendor/ and
+# public/build/ first, exactly like a manual deploy (docs/DEPLOY_WASMER.md).
+# Needs the WASMER_TOKEN repository secret (wasmer.io → Settings → Access tokens).
+
+on:
+  workflow_run:
+    workflows: [tests]
+    types: [completed]
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  deploy:
+    if: github.event_name == 'workflow_dispatch' || github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+          persist-credentials: false
+
+      - name: Setup PHP
+        uses: shivammathur/setup-php@f3e473d116dcccaddc5834248c87452386958240 # v2
+        with:
+          php-version: '8.4'
+          extensions: pdo_pgsql, pgsql, gd, intl, zip
+          tools: composer:v2
+          coverage: none
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 11
+
+      - name: Setup Node
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: pnpm
+
+      - name: Install PHP dependencies
+        run: composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader
+
+      - name: Build assets
+        run: |
+          pnpm install --frozen-lockfile
+          pnpm run build
+          rm -f public/hot
+
+      - name: Setup Wasmer
+        uses: wasmerio/setup-wasmer@v3.1
+
+      # Every deploy publishes a new package version. Give each run a unique,
+      # always-increasing version so nothing has to be bumped and committed.
+      - name: Set package version
+        run: sed -i -E 's/^version = ".*"/version = "0.2.${{ github.run_number }}"/' wasmer.toml
+
+      - name: Deploy to Wasmer Edge
+        env:
+          WASMER_TOKEN: ${{ secrets.WASMER_TOKEN }}
+        run: wasmer deploy --non-interactive

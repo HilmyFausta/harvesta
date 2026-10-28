@@ -167,14 +167,28 @@ Production runs at **<https://harvesta.wasmer.app>**. The full setup, the proble
 
 **Wasmer does not build anything.** It uploads the local folder as it is, so `vendor/` and `public/build/` must be prepared on your machine first. Files listed in [`.wasmerignore`](.wasmerignore) are not uploaded.
 
-### One-time setup
+### Automatic deploy (on every push to `main`)
+
+[`.github/workflows/deploy.yml`](.github/workflows/deploy.yml) runs after the **tests** workflow passes on `main`. It installs Composer dependencies, builds the assets, gives the package a unique version (`0.2.<run number>`), and runs `wasmer deploy`. If the tests fail, nothing is deployed. You can also start a deploy by hand from the **Actions** tab (**deploy** → **Run workflow**).
+
+One-time setup:
+
+1. Create a token at **wasmer.io → Settings → Access tokens**.
+2. In GitHub, go to **Settings → Secrets and variables → Actions → New repository secret** and add `WASMER_TOKEN` with that token.
+3. Disconnect Wasmer's own GitHub integration (Wasmer app dashboard → Git/GitHub settings), so pushes don't trigger a second, failing deploy check.
+
+Migrations are still run by hand (see [Database migrations](#database-migrations)). Run them **before** pushing code that needs them.
+
+### Manual deploy (from your machine)
+
+One-time setup:
 
 ```bash
 curl https://get.wasmer.io -sSfL | sh
 wasmer login
 ```
 
-### Redeploy after changes
+Then, after changes:
 
 ```bash
 git pull

@@ -220,6 +220,24 @@ Karena PHP itu bahasa interpreted (bukan dicompile), kode yang sudah berhasil di
 
 ## 7. Cara deploy ulang (update rutin)
 
+### 7.1 Otomatis lewat GitHub Actions (cara utama)
+
+Setiap push ke `main` menjalankan workflow `tests`. Kalau lulus, workflow `deploy` (`.github/workflows/deploy.yml`) langsung:
+1. `composer install --no-dev` dan `pnpm run build` di runner GitHub;
+2. mengubah `version` di `wasmer.toml` menjadi `0.2.<nomor run>` supaya setiap deploy punya versi unik tanpa perlu commit bump;
+3. menjalankan `wasmer deploy --non-interactive` dengan secret `WASMER_TOKEN`.
+
+Kalau test gagal, deploy tidak jalan. Deploy manual dari GitHub juga bisa: tab **Actions** → **deploy** → **Run workflow**.
+
+Setup sekali (oleh pemilik repo):
+- Buat token di **wasmer.io → Settings → Access tokens**.
+- Simpan di GitHub: **Settings → Secrets and variables → Actions → New repository secret**, nama `WASMER_TOKEN`.
+- Putuskan integrasi GitHub bawaan Wasmer (dashboard app → pengaturan Git/GitHub). Integrasi itu mencoba build dari repo yang tidak berisi `vendor/` dan `public/build/`, jadi selalu gagal dan memunculkan check merah.
+
+Migration **tidak** ikut jalan otomatis. Kalau ada migration baru, jalankan dulu ke database Wasmer (bagian 5.2) sebelum push.
+
+### 7.2 Manual dari laptop (cadangan)
+
 ```bash
 # 1. Ambil kode terbaru
 git pull
