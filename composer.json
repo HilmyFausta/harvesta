@@ -110,7 +110,10 @@
             "pestphp/pest-plugin": true,
             "php-http/discovery": true
         },
-        "platform-check": false
+        "platform-check": false,
+        "platform": {
+            "php": "8.3.4"
+        }
     },
     "minimum-stability": "stable",
     "prefer-stable": true
