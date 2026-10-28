@@ -523,7 +523,7 @@ Jika jadwal meleset, potong dulu: PDF export, grafik tambahan, dan fitur foto di
 **Keamanan dasar:** CSRF aktif (bawaan), password di-hash, mass assignment dilindungi (`$fillable`), validasi unggahan file, tidak ada SQL mentah tanpa binding, `APP_DEBUG=false` di produksi, rahasia hanya di env/secrets.
 
 **Catatan uji deploy (isi saat Tahap 1)**
-- Hasil uji Wasmer: awalnya dianggap terblokir karena registry Wasmer hanya menyediakan `php/php` 8.3.4. Ternyata `vendor/` di-build di laptop (PHP 8.4) dan hanya dijalankan oleh interpreter 8.3.4, sehingga aplikasi berjalan normal (detail di `docs/DEPLOY_WASMER.md` bagian 6).
+- Hasil uji Wasmer: awalnya dianggap terblokir karena registry Wasmer hanya menyediakan `php/php` 8.3.4. Solusinya: `composer.json` mengunci `config.platform.php` ke `8.3.4` sehingga dependency (mis. Symfony 7.4) cocok dengan interpreter Wasmer (detail di `docs/DEPLOY_WASMER.md` bagian 6).
 - Docker scaffold dan workflow deploy Azure sempat dipakai, lalu dihapus setelah pindah ke Wasmer (10.1).
 - Keputusan penyimpanan foto produksi: Supabase Storage (lihat 10.1) (sementara `PHOTO_DISK=local`).
 

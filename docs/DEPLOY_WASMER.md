@@ -12,7 +12,7 @@
 |---|---|
 | Platform | Wasmer Edge (WebAssembly runtime, bukan container Docker biasa) |
 | Interpreter PHP | `php/php` versi `8.3.4` (resmi dari Wasmer registry) |
-| Laravel version | 13 (**tidak didowngrade** — lihat catatan di bagian 6) |
+| Laravel version | 13, dependency dikunci ke PHP 8.3.4 (lihat bagian 6) |
 | Database | PostgreSQL bawaan Wasmer (bukan Supabase) |
 | Nama app | `harvesta` (namespace `hilmyfausta`) |
 | URL live | `https://harvesta.wasmer.app` |
@@ -206,15 +206,29 @@ Lalu daftarkan di `wasmer.toml` sebagai argumen terakhir `main-args` (lihat bagi
 
 ---
 
-## 6. Soal versi PHP: kenapa Laravel 13 (butuh PHP ≥8.4) bisa jalan di interpreter 8.3.4
+## 6. Soal versi PHP: dependency dikunci ke PHP 8.3.4
 
-Ini sempat jadi concern besar di awal eksperimen, tapi ternyata **non-issue**, karena cara kerja Wasmer:
+Wasmer hanya menyediakan interpreter `php/php` 8.3.4, sedangkan laptop dan CI memakai PHP 8.4. Wasmer **tidak** menjalankan `composer install`; `vendor/` dibuat di laptop (atau di GitHub Actions) lalu ikut ter-upload apa adanya. Karena itu versi package di `vendor/` **harus** bisa jalan di PHP 8.3.4.
 
-Wasmer **tidak** menjalankan `composer install` di dalam sandbox-nya sama sekali. `wasmer.toml` cuma mounting folder project apa adanya (`[fs] "/app" = "."`), termasuk folder `vendor/` yang sudah di-build duluan **di laptop** pakai PHP lokal (PHP 8.4). Dependency `"php/php" = "8.3.4"` cuma nentuin interpreter yang menjalankan kode PHP di runtime — sama sekali terpisah dari versi PHP yang dipakai buat resolve dependency Composer.
+Solusinya, `composer.json` mengunci platform Composer ke versi Wasmer:
 
-Karena PHP itu bahasa interpreted (bukan dicompile), kode yang sudah berhasil di-resolve Composer tetap bisa dijalankan interpreter versi lain, **selama nggak ada syntax yang benar-benar eksklusif ke versi lebih baru** (contoh: property hooks PHP 8.4) yang kepake di code path yang dieksekusi. Untuk fitur-fitur yang dipakai project ini, ternyata aman.
+```json
+"config": {
+    "platform": { "php": "8.3.4" },
+    "platform-check": false
+}
+```
 
-**Implikasi:** `vendor/` yang di-mount ke Wasmer **harus** hasil `composer install` dari laptop sendiri (PHP 8.4 lokal), bukan dari dalam sandbox. Setiap kali ada perubahan dependency, jalankan `composer install`/`composer update` lokal dulu sebelum `wasmer deploy`.
+Dengan ini, `composer update` hanya memilih versi yang mendukung PHP 8.3.4 (misalnya Symfony 7.4, bukan Symfony 8.x yang butuh PHP ≥ 8.4.1), walaupun dijalankan di PHP 8.4. **Jangan hapus `config.platform.php`.**
+
+### Insiden 28 Okt: error 500 setelah `composer install`
+**Gejala:** semua halaman (termasuk `/up`) error 500 dengan body kosong, header `X-Powered-By: PHP/8.3.4`.
+
+**Penyebab:** `composer.lock` di git berisi Symfony 8.1 (butuh PHP ≥ 8.4.1). Deploy lama dari laptop jalan karena `vendor/` lokal kebetulan masih Symfony 7.4 dan tidak cocok dengan lock. Begitu `composer install` dijalankan sesuai lock (di GitHub Actions, lalu di laptop), Symfony naik ke 8.1 dan aplikasi crash saat boot di PHP 8.3.4.
+
+**Fix:** `composer config platform.php 8.3.4` lalu `composer update "symfony/*" -W`, commit `composer.json` + `composer.lock`, deploy ulang.
+
+**Pelajaran:** kalau ada error 500 di semua halaman setelah update dependency, cek dulu apakah ada package di `composer.lock` yang mensyaratkan PHP ≥ 8.4.
 
 ---
 

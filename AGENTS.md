@@ -51,4 +51,4 @@ php artisan test                    # needs the harvesta_testing database
 - The per-member file ownership in PRD section 12 no longer applies; any area may be edited. Shared files (layout, `routes/web.php`, providers, config) still change in small, separate commits.
 - The team works directly on `main` (no feature branches, no PRs). Use Conventional Commits and keep `main` runnable. Never push yourself; the human pushes.
 - Do not report a task as done while Pint, PHPStan, or tests fail.
-- Production runs on Wasmer Edge (`docs/DEPLOY_WASMER.md`). Code must not rely on `exec()`/subprocesses, local disk persistence, or PHP 8.4-only syntax at runtime (the interpreter there is PHP 8.3.4).
+- Production runs on Wasmer Edge (`docs/DEPLOY_WASMER.md`). Code must not rely on `exec()`/subprocesses, local disk persistence, or PHP 8.4-only syntax at runtime (the interpreter there is PHP 8.3.4). Keep `config.platform.php = 8.3.4` in `composer.json` so Composer never installs packages that need PHP 8.4.

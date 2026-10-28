@@ -165,6 +165,8 @@ Production runs at **<https://harvesta.wasmer.app>**. The full setup, the proble
 | Photos | Supabase Storage bucket `harvesta-photos` over S3 (`PHOTO_DISK=s3`) |
 | Secrets | `APP_KEY`, `DB_*`, `PHOTO_S3_*`, and `SEED_*_PASSWORD` are set with `wasmer app secrets`, never committed |
 
+**Dependencies are locked to PHP 8.3.4.** Wasmer only offers PHP 8.3.4, so `composer.json` sets `config.platform.php` to `8.3.4`. That way `composer update` never picks packages that need PHP 8.4, such as Symfony 8. Do not remove it. Your local PHP can still be 8.4.
+
 **Wasmer does not build anything.** It uploads the local folder as it is, so `vendor/` and `public/build/` must be prepared on your machine first. Files listed in [`.wasmerignore`](.wasmerignore) are not uploaded.
 
 ### Automatic deploy (on every push to `main`)
