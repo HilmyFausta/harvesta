@@ -1,8 +1,8 @@
-# Deployment Wasmer Edge — Harvesta (Backup Plan)
+# Deployment Wasmer Edge — Harvesta
 
-> Dokumen ini mencatat proses setup, konfigurasi, bug yang ditemukan, dan cara fix-nya selama eksperimen deploy Harvesta ke Wasmer Edge sebagai *backup plan* di luar deployment utama (Azure App Service + Supabase).
+> Dokumen ini mencatat setup, konfigurasi, bug yang ditemukan beserta perbaikannya, dan cara deploy ulang Harvesta di Wasmer Edge.
 >
-> Status: **berhasil jalan**, tapi tetap backup plan — bukan pengganti Azure untuk submission utama, karena stack resmi tim masih PostgreSQL via Supabase (lihat PRD bagian 9.1) dan perubahan platform ini belum dibicarakan/disetujui bertiga.
+> Status: **production** di <https://harvesta.wasmer.app> (disepakati tim sebagai platform deploy utama, menggantikan Azure).
 
 ---
 
@@ -22,7 +22,7 @@
 
 ## 2. Install & Setup Wasmer CLI (di laptop, bukan di server)
 
-Wasmer CLI adalah tool development yang di-install **lokal di laptop**, dipakai untuk build/test/deploy — sepenuhnya terpisah dari server manapun (termasuk Azure).
+Wasmer CLI adalah tool development yang di-install **lokal di laptop**, dipakai untuk build/test/deploy — sepenuhnya terpisah dari server.
 
 ```bash
 curl https://get.wasmer.io -sSfL | sh
@@ -70,17 +70,19 @@ Setiap `wasmer deploy`, kalau isi file berubah tapi `version` di `[package]` ngg
 
 ## 4. Database: PostgreSQL bawaan Wasmer
 
-**Penting:** ini **database terpisah dari Supabase** yang dipakai di Azure. Di-provision otomatis sama Wasmer saat app pertama kali dibuat, nggak perlu setup manual dari awal.
+Database ini di-provision otomatis sama Wasmer saat app pertama kali dibuat, nggak perlu setup manual dari awal.
 
 Cara lihat kredensialnya: buka dashboard app → tab **Databases** (`https://wasmer.io/apps/hilmyfausta/harvesta/databases`).
 
-| Field | Contoh nilai (cek dashboard buat yang terbaru) |
+| Field | Nilai |
 |---|---|
-| Host | `psql.fr-roub1.bengt.wasmernet.com` |
-| Port | `20184` |
-| Database name | `db_harvesta` |
-| Username | `user_57f95d5a` |
-| Password | (lihat tombol mata di dashboard, atau `wasmer app secrets reveal DB_PASSWORD`) |
+| Host | `psql.fr-roub1.<...>.wasmernet.com` (lihat dashboard) |
+| Port | lihat dashboard |
+| Database name | lihat dashboard (bukan `postgres`, lihat 5.1) |
+| Username | lihat dashboard |
+| Password | tombol mata di dashboard, atau `wasmer app secrets reveal DB_PASSWORD` |
+
+Nilai aslinya sengaja tidak ditulis di sini karena repo ini publik.
 
 **Lokasi fisik database:** `fr-roub1` = Roubaix, Prancis (konvensi penamaan data center ala OVHcloud). Ini jauh dari Indonesia — berpengaruh ke kecepatan kalau akses langsung dari laptop (lihat bagian 8).
 
@@ -134,11 +136,11 @@ FATAL: permission denied for database "postgres"
 DETAIL: User does not have CONNECT privilege.
 ```
 
-**Penyebab:** waktu ganti dari eksperimen Supabase ke database bawaan Wasmer, `DB_HOST`/`DB_PORT`/`DB_USERNAME`/`DB_PASSWORD` sempat diupdate ke kredensial Wasmer, tapi `DB_DATABASE` ketinggalan masih isi lama (`postgres`, gaya penamaan default Supabase) — padahal nama database yang beneran di-provision Wasmer itu `db_harvesta`. Selain itu sempat kebuat secret baru namanya `DB_NAME` (bukan `DB_DATABASE`) yang nggak kebaca Laravel sama sekali (`config/database.php` baca `env('DB_DATABASE')`).
+**Penyebab:** waktu ganti dari eksperimen Supabase ke database bawaan Wasmer, `DB_HOST`/`DB_PORT`/`DB_USERNAME`/`DB_PASSWORD` sempat diupdate ke kredensial Wasmer, tapi `DB_DATABASE` ketinggalan masih isi lama (`postgres`, gaya penamaan default Supabase) — padahal nama database yang beneran di-provision Wasmer berbeda (lihat dashboard). Selain itu sempat kebuat secret baru namanya `DB_NAME` (bukan `DB_DATABASE`) yang nggak kebaca Laravel sama sekali (`config/database.php` baca `env('DB_DATABASE')`).
 
 **Fix:**
 ```bash
-wasmer app secrets update DB_DATABASE db_harvesta
+wasmer app secrets update DB_DATABASE <nama_database_dari_dashboard>
 wasmer app secrets delete DB_NAME   # hapus yang nyasar
 wasmer deploy
 ```
@@ -219,16 +221,26 @@ Karena PHP itu bahasa interpreted (bukan dicompile), kode yang sudah berhasil di
 ## 7. Cara deploy ulang (update rutin)
 
 ```bash
-# 1. Pastikan vendor/ dan public/build/ up to date
+# 1. Ambil kode terbaru
+git pull
+
+# 2. Pastikan vendor/ dan public/build/ up to date
 composer install
 pnpm install
 pnpm run build
 
-# 2. Deploy
+# 3. Matikan dev server (composer run dev / pnpm dev) dan pastikan file public/hot tidak ada.
+#    Kalau ikut ter-upload, Laravel mencari CSS/JS ke localhost dan tampilan rusak.
+#    (public/hot juga sudah masuk .wasmerignore sebagai pengaman.)
+rm -f public/hot
+
+# 4. Kalau ada migration baru, jalankan ke database Wasmer (lihat bagian 5.2)
+
+# 5. Deploy
 wasmer deploy
 # Kalau ada warning soal version bump, jawab "y"
 
-# 3. Tunggu sampai "deployed successfully", lalu test akses
+# 6. Tunggu sampai "deployed successfully", lalu test akses
 # https://harvesta.wasmer.app
 ```
 
@@ -272,8 +284,3 @@ Opsional: kalau foto-foto di Supabase Storage juga mau direset bareng, itu di lu
 - [ ] `wasmer app secrets list` — pastikan semua secret `DB_*` sudah benar (terutama `DB_DATABASE`)
 - [ ] Akses `https://harvesta.wasmer.app` dari browser biasa (bukan incognito, biar nggak kena isu cache lama) beberapa menit sebelum demo — biar instance "panas" duluan
 - [ ] Cek halaman login, dashboard, dan minimal satu CRUD (misal Categories) beneran nampilin styling normal
-- [ ] Siapkan Azure (`https://harvesta-its-bkdderb9aea4cxe2.japaneast-01.azurewebsites.net`) sebagai cadangan kalau Wasmer tiba-tiba bermasalah pas demo
-
----
-
-*Dokumen ini dibuat berdasarkan proses debugging solo (belum dibicarakan dengan partner tim). Perubahan platform deployment dari Azure ke Wasmer sebagai pengganti utama tetap butuh diskusi & persetujuan tim sebelum diputuskan, sesuai PRD bagian 16.*

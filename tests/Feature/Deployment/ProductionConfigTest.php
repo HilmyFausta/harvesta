@@ -36,12 +36,12 @@ class ProductionConfigTest extends TestCase
     {
         $this->get('/login', [
             'X-Forwarded-Proto' => 'https',
-            'X-Forwarded-Host' => 'harvesta.azurewebsites.net',
+            'X-Forwarded-Host' => 'harvesta.wasmer.app',
             'X-Forwarded-Port' => '443',
         ])
             ->assertOk()
-            ->assertSee('https://harvesta.azurewebsites.net', false)
-            ->assertDontSee('http://harvesta.azurewebsites.net', false);
+            ->assertSee('https://harvesta.wasmer.app', false)
+            ->assertDontSee('http://harvesta.wasmer.app', false);
     }
 
     public function test_seeding_in_production_requires_real_passwords(): void

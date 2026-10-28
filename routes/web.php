@@ -5,41 +5,9 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', fn () => to_route(auth()->check() ? 'dashboard' : 'login'))->name('home');
 
-// Manual database setup for Wasmer (no SSH access)
-// Access: /setup-db?key=YOUR_APP_KEY_HERE
-// Remove this route after successful deployment!
-Route::get('/setup-db', function () {
-    if (! app()->environment('production')) {
-        return 'This route only works in production.';
-    }
-
-    $expectedKey = substr(config('app.key'), 7, 16); // Extract 16 chars from base64:...
-    if (request('key') !== $expectedKey) {
-        abort(403, 'Invalid key');
-    }
-
-    $output = [];
-
-    // Run migrations
-    Artisan::call('migrate', ['--force' => true]);
-    $output[] = 'Migrations: '.Artisan::output();
-
-    // Run seeders
-    Artisan::call('db:seed', ['--force' => true]);
-    $output[] = 'Seeder: '.Artisan::output();
-
-    // Cache config
-    Artisan::call('config:cache');
-    $output[] = 'Config cached';
-
-    return response('<pre>'.implode("\n\n", $output).'</pre>');
-})->middleware('throttle:3,60'); // Max 3 requests per hour
-
 Route::middleware('auth')->group(function () {
     Route::livewire('dashboard', 'pages::dashboard.index')->name('dashboard');
 
-    // Placeholder pages (PRD 7.1). Each module owner replaces its line with
-    // the real routes, keeping the `<module>.index` route name.
     Route::livewire('trees', 'pages::trees.index')->name('trees.index');
     Route::livewire('trees/create', 'pages::trees.create')->name('trees.create');
     Route::livewire('trees/{tree}', 'pages::trees.show')->name('trees.show');

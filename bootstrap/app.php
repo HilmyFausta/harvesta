@@ -13,7 +13,7 @@ return Application::configure(basePath: dirname(__DIR__))
         health: '/up',
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        // Render (and most PaaS hosts) terminate HTTPS at a proxy; trust its
+        // Wasmer Edge (and most PaaS hosts) terminate HTTPS at a proxy; trust its
         // X-Forwarded-* headers so generated URLs use https.
         $middleware->trustProxies(at: '*');
 

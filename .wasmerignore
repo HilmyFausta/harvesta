@@ -1,6 +1,9 @@
 # Abaikan folder node_modules (tidak dipakai di runtime)
 node_modules/
 
+# File penanda Vite dev server; kalau ikut ter-deploy, CSS/JS akan dicari ke localhost
+public/hot
+
 # JANGAN ignore vendor/ - Wasmer butuh ini untuk Laravel!
 # vendor/
 
@@ -30,12 +33,8 @@ docs/
 AGENTS.md
 CLAUDE.md
 PRD.md
-MEMBER_*.md
 *.neon
 phpunit.xml
 pint.json
 .editorconfig
-.dockerignore
-Dockerfile
-docker/
 render.yaml

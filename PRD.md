@@ -431,16 +431,15 @@ Ikuti pola Livewire dari starter kit; jangan mencampur dua gaya (mis. single-fil
 
 ## 10. Deployment dan Penyimpanan Foto
 
-### 10.1 Target deploy: Azure App Service + Supabase (diputuskan 23 Okt)
-Langkah lengkap: [`docs/DEPLOY.md`](docs/DEPLOY.md).
+### 10.1 Target deploy: Wasmer Edge (diputuskan 27 Okt, menggantikan Azure)
+Langkah lengkap: [`docs/DEPLOY_WASMER.md`](docs/DEPLOY_WASMER.md). Live: <https://harvesta.wasmer.app>.
 
-- **Aplikasi:** Azure App Service (Linux container, plan Free F1; B1 dari kredit Azure for Students bila perlu). Image dibuat dari `Dockerfile` + `docker/start.sh` oleh workflow `.github/workflows/deploy.yml` setelah `tests` hijau di `main`, disimpan di GitHub Container Registry (`ghcr.io/hilmyfausta/harvesta`), lalu di-deploy ke Azure (publish profile di GitHub Secrets).
-- **Database:** Supabase PostgreSQL (free, tidak kedaluwarsa) lewat koneksi *Session pooler* (IPv4, `sslmode=require`).
+- **Aplikasi:** Wasmer Edge menjalankan PHP built-in server (`php/php` 8.3.4) lewat `wasmer.toml` + `wasmer-router.php`. Wasmer tidak build apa pun: `vendor/` (`composer install`) dan `public/build/` (`pnpm run build`) disiapkan di laptop lalu ikut ter-upload oleh `wasmer deploy`.
+- **Database:** PostgreSQL bawaan Wasmer (region `fr-roub1`), `sslmode=require`.
 - **Foto:** Supabase Storage, bucket publik `harvesta-photos`, diakses lewat protokol S3 (`PHOTO_DISK=s3`).
-- **Data demo:** `start.sh` menjalankan `migrate --force` lalu `db:seed --force` setiap boot. Aman diulang: akun dan master data di-*upsert*, data demo (40 pohon + 32 foto) hanya dibuat jika tabel `trees` masih kosong.
-- **Rahasia** (`APP_KEY`, `DB_PASSWORD`, kunci S3, `SEED_*_PASSWORD`) hanya diisi di Azure App settings / GitHub Secrets, tidak pernah di repo.
-- Ditolak: Wasmer Edge (dukungan ekstensi PHP tidak terdokumentasi, PostgreSQL hanya region Eropa/Kanada) dan Render (Blueprint maupun Web Service meminta kartu kredit).
-- Batasan: F1 dibatasi 60 menit CPU/hari dan tidur saat idle (buka ±2 menit sebelum demo); project Supabase di-*pause* setelah ±1 minggu tidak aktif (aktifkan lagi dari dashboard).
+- **Migrasi dan seed:** dijalankan manual dari laptop ke database Wasmer (`php artisan migrate --force`), karena sandbox WASI tidak bisa menjalankan subprocess.
+- **Rahasia** (`APP_KEY`, `DB_*`, kunci S3, `SEED_*_PASSWORD`) hanya diisi lewat `wasmer app secrets`, tidak pernah di repo.
+- Riwayat: Azure App Service + Docker sempat berjalan (23 Okt) lalu dihapus dari repo setelah tim sepakat memakai Wasmer.
 
 ### 10.2 Batasan runtime yang harus dipatuhi sejak sekarang
 Anggap disk lokal server bersifat **sementara / tidak persisten**. Maka:
@@ -448,7 +447,7 @@ Anggap disk lokal server bersifat **sementara / tidak persisten**. Maka:
 - Log ke `stderr` di produksi (`LOG_CHANNEL=stderr`).
 - Ekspor/Laporan dihasilkan streaming, bukan disimpan ke disk.
 - Hindari ekstensi PHP yang tidak umum; periksa kompatibilitas saat uji deploy.
-- Jika uji deploy gagal pada hal tertentu, catat di bagian 14 dan cari alternatif (cadangan: plan B1 Azure dari kredit student).
+- Jika uji deploy gagal pada hal tertentu, catat di bagian 14 dan cari alternatif.
 
 ### 10.3 Abstraksi penyimpanan foto (akan "diakali" belakangan)
 - Semua kode foto hanya boleh memakai disk Laravel bernama **`photos`**: `Storage::disk('photos')`. **Dilarang** memakai `public_path()`, `storage_path()`, atau path file langsung.
@@ -524,8 +523,8 @@ Jika jadwal meleset, potong dulu: PDF export, grafik tambahan, dan fitur foto di
 **Keamanan dasar:** CSRF aktif (bawaan), password di-hash, mass assignment dilindungi (`$fillable`), validasi unggahan file, tidak ada SQL mentah tanpa binding, `APP_DEBUG=false` di produksi, rahasia hanya di env/secrets.
 
 **Catatan uji deploy (isi saat Tahap 1)**
-- Hasil uji Wasmer (ekstensi PHP, koneksi PostgreSQL, session/cache, log): **tidak dapat dilanjutkan** — registry Wasmer hanya menyediakan `php/php` sampai 8.3.4, sedangkan `composer.lock` mensyaratkan PHP >= 8.4.1 (Symfony 8).
-- Docker scaffold (`Dockerfile`, `docker/start.sh`) sudah dibuat dan teruji: image berhasil di-build dan container menjalankan migrasi, cache, `storage:link`, serta server di `/login`. Target deploy kini Azure App Service (10.1); `render.yaml` dihapus.
+- Hasil uji Wasmer: awalnya dianggap terblokir karena registry Wasmer hanya menyediakan `php/php` 8.3.4. Ternyata `vendor/` di-build di laptop (PHP 8.4) dan hanya dijalankan oleh interpreter 8.3.4, sehingga aplikasi berjalan normal (detail di `docs/DEPLOY_WASMER.md` bagian 6).
+- Docker scaffold dan workflow deploy Azure sempat dipakai, lalu dihapus setelah pindah ke Wasmer (10.1).
 - Keputusan penyimpanan foto produksi: Supabase Storage (lihat 10.1) (sementara `PHOTO_DISK=local`).
 
 ---
